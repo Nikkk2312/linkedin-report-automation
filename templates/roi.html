@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% set report_name = report_name %}
+{% block title %}ROI Calculator - {{ report_name }}{% endblock %}
+{% block page_title %}ROI Calculator{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('dashboard') }}">Dashboard</a> / <a href="{{ url_for('view_report', report_name=report_name) }}">{{ report_name[:20] }}</a> / ROI{% endblock %}
+
+{% block content %}
+<div class="alert alert-info">
+  <span>&#128178;</span>
+  <span>Enter your conversion values to calculate ROI and ROAS for each campaign.</span>
+</div>
+
+<!-- Global Settings -->
+<div class="card">
+  <h3 style="margin-bottom:12px;">Revenue Settings</h3>
+  <div class="form-row">
+    <div class="form-group">
+      <label>Average Revenue per Lead ($)</label>
+      <input type="number" id="revenuePerLead" value="500" min="0" step="10" onchange="recalcROI()">
+    </div>
+    <div class="form-group">
+      <label>Lead-to-Customer Rate (%)</label>
+      <input type="number" id="convRate" value="20" min="0" max="100" step="1" onchange="recalcROI()">
+    </div>
+    <div class="form-group">
+      <label>Revenue per Click ($) <span class="hint" style="display:inline;">(alt method)</span></label>
+      <input type="number" id="revenuePerClick" value="0" min="0" step="0.5" onchange="recalcROI()">
+    </div>
+  </div>
+</div>
+
+<!-- Summary KPIs -->
+<div class="kpi-grid" id="roiKpis">
+  <div class="kpi-card">
+    <div class="kpi-label">Total Spend</div>
+    <div class="kpi-value">${{ '{:,.2f}'.format(agg.total_spend) }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Total Clicks</div>
+    <div class="kpi-value">{{ '{:,}'.format(agg.total_clicks) }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Total Leads</div>
+    <div class="kpi-value">{{ '{:,}'.format(agg.total_leads) }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Est. Revenue</div>
+    <div class="kpi-value" id="kpiRevenue">$0</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">ROI</div>
+    <div class="kpi-value" id="kpiROI" style="color:var(--success);">0%</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">ROAS</div>
+    <div class="kpi-value" id="kpiROAS">0x</div>
+  </div>
+</div>
+
+<!-- Per-Campaign ROI Table -->
+<div class="card">
+  <div class="card-header">
+    <h3>Campaign ROI Breakdown</h3>
+  </div>
+  <div class="table-wrap">
+    <table class="table" id="roiTable">
+      <thead>
+        <tr>
+          <th>Campaign</th>
+          <th style="text-align:right;">Spend</th>
+          <th style="text-align:right;">Clicks</th>
+          <th style="text-align:right;">Leads</th>
+          <th style="text-align:right;">Est. Revenue</th>
+          <th style="text-align:right;">Profit</th>
+          <th style="text-align:right;">ROI</th>
+          <th style="text-align:right;">ROAS</th>
+        </tr>
+      </thead>
+      <tbody id="roiBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Charts -->
+<div class="grid-2">
+  <div class="card">
+    <h3>ROI by Campaign</h3>
+    <canvas id="roiChart" height="300"></canvas>
+  </div>
+  <div class="card">
+    <h3>Spend vs Revenue</h3>
+    <canvas id="spendVsRevChart" height="300"></canvas>
+  </div>
+</div>
+
+<script>
+var campaigns = {{ campaigns|tojson }};
+var roiChart = null, spendRevChart = null;
+
+function recalcROI() {
+  var rpl = parseFloat(document.getElementById('revenuePerLead').value) || 0;
+  var convRate = parseFloat(document.getElementById('convRate').value) / 100;
+  var rpc = parseFloat(document.getElementById('revenuePerClick').value) || 0;
+
+  var totalSpend = 0, totalRevenue = 0;
+  var rows = '';
+  var campNames = [], campROIs = [], campSpends = [], campRevenues = [];
+
+  campaigns.forEach(function(c) {
+    var spend = parseFloat(c.cost_usd || 0);
+    var clicks = c.clicks || 0;
+    var leads = c.oneClickLeads || c.one_click_leads || 0;
+    var revenue;
+    if (rpc > 0) {
+      revenue = clicks * rpc;
+    } else {
+      var customers = leads * convRate;
+      revenue = customers * rpl;
+    }
+    var profit = revenue - spend;
+    var roi = spend > 0 ? ((revenue - spend) / spend * 100) : 0;
+    var roas = spend > 0 ? (revenue / spend) : 0;
+    totalSpend += spend;
+    totalRevenue += revenue;
+
+    var name = (c.display_name || c.name || 'Unknown').substring(0, 30);
+    campNames.push(name);
+    campROIs.push(Math.round(roi));
+    campSpends.push(spend);
+    campRevenues.push(revenue);
+
+    rows += '<tr>';
+    rows += '<td style="font-weight:600;">' + name + '</td>';
+    rows += '<td style="text-align:right;">$' + spend.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + '</td>';
+    rows += '<td style="text-align:right;">' + clicks.toLocaleString() + '</td>';
+    rows += '<td style="text-align:right;">' + leads + '</td>';
+    rows += '<td style="text-align:right;">$' + revenue.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + '</td>';
+    rows += '<td style="text-align:right;color:' + (profit >= 0 ? 'var(--success)' : 'var(--danger)') + ';">$' + profit.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + '</td>';
+    rows += '<td style="text-align:right;color:' + (roi >= 0 ? 'var(--success)' : 'var(--danger)') + ';">' + roi.toFixed(1) + '%</td>';
+    rows += '<td style="text-align:right;">' + roas.toFixed(2) + 'x</td>';
+    rows += '</tr>';
+  });
+
+  document.getElementById('roiBody').innerHTML = rows;
+  var totalROI = totalSpend > 0 ? ((totalRevenue - totalSpend) / totalSpend * 100) : 0;
+  var totalROAS = totalSpend > 0 ? (totalRevenue / totalSpend) : 0;
+  document.getElementById('kpiRevenue').textContent = '$' + totalRevenue.toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0});
+  document.getElementById('kpiROI').textContent = totalROI.toFixed(1) + '%';
+  document.getElementById('kpiROI').style.color = totalROI >= 0 ? 'var(--success)' : 'var(--danger)';
+  document.getElementById('kpiROAS').textContent = totalROAS.toFixed(2) + 'x';
+
+  // Update charts
+  if (roiChart) roiChart.destroy();
+  if (spendRevChart) spendRevChart.destroy();
+
+  roiChart = new Chart(document.getElementById('roiChart'), {
+    type: 'bar',
+    data: { labels: campNames, datasets: [{ label: 'ROI (%)', data: campROIs, backgroundColor: campROIs.map(function(v) { return v >= 0 ? '#057A42' : '#CC1C39'; }) }] },
+    options: { responsive: true, indexAxis: 'y', plugins: { legend: { display: false } } }
+  });
+
+  spendRevChart = new Chart(document.getElementById('spendVsRevChart'), {
+    type: 'bar',
+    data: {
+      labels: campNames,
+      datasets: [
+        { label: 'Spend', data: campSpends, backgroundColor: '#CC1C39' },
+        { label: 'Revenue', data: campRevenues, backgroundColor: '#057A42' }
+      ]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 13 } } } } }
+  });
+}
+
+recalcROI();
+</script>
+{% endblock %}

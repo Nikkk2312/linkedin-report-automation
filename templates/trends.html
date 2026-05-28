@@ -1,0 +1,326 @@
+{% extends "base.html" %}
+{% block title %}Trends - LinkedIn Report Automation{% endblock %}
+{% block page_title %}Historical Trends{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('dashboard') }}">Dashboard</a> / Trends{% endblock %}
+
+{% block topbar_actions %}
+<a href="/api/trends-csv" class="btn btn-outline btn-sm">&#8595; Export CSV</a>
+{% endblock %}
+
+{% block content %}
+{% if trends|length > 1 %}
+
+<!-- Controls Bar -->
+<div class="card" style="padding:14px 20px;">
+  <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+    <div style="display:flex;align-items:center;gap:6px;">
+      <label style="font-size:15px;font-weight:600;color:var(--muted);">Metric:</label>
+      <select id="metricSelector" onchange="updateCharts()" style="padding:8px 14px;border:1px solid var(--border);border-radius:8px;font-size:15px;background:var(--card);color:var(--text);min-height:44px;">
+        <option value="all" selected>All Metrics</option>
+        <option value="impressions">Impressions</option>
+        <option value="clicks">Clicks</option>
+        <option value="spend">Spend ($)</option>
+        <option value="ctr">CTR (%)</option>
+        <option value="cpc">CPC ($)</option>
+      </select>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;">
+      <label style="font-size:15px;font-weight:600;color:var(--muted);">Goal Lines:</label>
+      <label class="checkbox-label" style="font-size:14px;"><input type="checkbox" id="showGoals" onchange="updateCharts()" checked> Show benchmarks</label>
+    </div>
+    <span style="flex:1;"></span>
+    <button class="btn btn-ghost btn-sm" onclick="exportAllCharts()" title="Download all charts as PNG">&#128247; Export Charts</button>
+  </div>
+</div>
+
+<!-- Focused Single Metric View -->
+<div id="singleMetricView" style="display:none;">
+  <div class="card">
+    <div class="card-header">
+      <h3 id="singleMetricTitle">Metric</h3>
+      <button class="btn btn-ghost btn-sm" onclick="exportChart('singleChart','metric')" title="Download chart">&#128247;</button>
+    </div>
+    <canvas id="singleChart" height="320"></canvas>
+  </div>
+  <!-- Stats summary for focused metric -->
+  <div class="kpi-grid" id="metricStats"></div>
+</div>
+
+<!-- Multi-Metric View -->
+<div id="multiMetricView">
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header">
+        <h3>Impressions Over Time</h3>
+        <button class="btn btn-ghost btn-sm" onclick="exportChart('impTrend','impressions')" title="Download chart">&#128247;</button>
+      </div>
+      <canvas id="impTrend" height="250"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <h3>Clicks Over Time</h3>
+        <button class="btn btn-ghost btn-sm" onclick="exportChart('clickTrend','clicks')" title="Download chart">&#128247;</button>
+      </div>
+      <canvas id="clickTrend" height="250"></canvas>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header">
+        <h3>Spend Over Time</h3>
+        <button class="btn btn-ghost btn-sm" onclick="exportChart('spendTrend','spend')" title="Download chart">&#128247;</button>
+      </div>
+      <canvas id="spendTrend" height="250"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <h3>CTR Over Time</h3>
+        <button class="btn btn-ghost btn-sm" onclick="exportChart('ctrTrend','ctr')" title="Download chart">&#128247;</button>
+      </div>
+      <canvas id="ctrTrend" height="250"></canvas>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h3>All Metrics Combined</h3>
+      <button class="btn btn-ghost btn-sm" onclick="exportChart('combinedTrend','combined')" title="Download chart">&#128247;</button>
+    </div>
+    <canvas id="combinedTrend" height="300"></canvas>
+  </div>
+</div>
+
+<!-- Period-over-Period Summary -->
+{% if trends|length >= 2 %}
+{% set latest = trends[-1] %}
+{% set prev = trends[-2] %}
+<div class="card">
+  <h3 style="margin-bottom:12px;">Period-over-Period Change</h3>
+  <div class="kpi-grid">
+    {% set imp_change = ((latest.impressions - prev.impressions) / prev.impressions * 100) if prev.impressions else 0 %}
+    <div class="kpi-card">
+      <div class="kpi-label">Impressions</div>
+      <div class="kpi-value">{{ '{:,}'.format(latest.impressions) }}</div>
+      <div class="kpi-change {% if imp_change >= 0 %}up{% else %}down{% endif %}">
+        {% if imp_change >= 0 %}&#9650;{% else %}&#9660;{% endif %} {{ '{:.1f}'.format(imp_change|abs) }}%
+      </div>
+    </div>
+    {% set click_change = ((latest.clicks - prev.clicks) / prev.clicks * 100) if prev.clicks else 0 %}
+    <div class="kpi-card">
+      <div class="kpi-label">Clicks</div>
+      <div class="kpi-value">{{ '{:,}'.format(latest.clicks) }}</div>
+      <div class="kpi-change {% if click_change >= 0 %}up{% else %}down{% endif %}">
+        {% if click_change >= 0 %}&#9650;{% else %}&#9660;{% endif %} {{ '{:.1f}'.format(click_change|abs) }}%
+      </div>
+    </div>
+    {% set spend_change = ((latest.spend - prev.spend) / prev.spend * 100) if prev.spend else 0 %}
+    <div class="kpi-card">
+      <div class="kpi-label">Spend</div>
+      <div class="kpi-value">${{ '{:,.2f}'.format(latest.spend) }}</div>
+      <div class="kpi-change {% if spend_change <= 0 %}up{% else %}down{% endif %}">
+        {% if spend_change >= 0 %}&#9650;{% else %}&#9660;{% endif %} {{ '{:.1f}'.format(spend_change|abs) }}%
+      </div>
+    </div>
+    {% set ctr_change = latest.ctr - prev.ctr %}
+    <div class="kpi-card">
+      <div class="kpi-label">CTR</div>
+      <div class="kpi-value">{{ '{:.2f}'.format(latest.ctr) }}%</div>
+      <div class="kpi-change {% if ctr_change >= 0 %}up{% else %}down{% endif %}">
+        {% if ctr_change >= 0 %}&#9650;{% else %}&#9660;{% endif %} {{ '{:.2f}'.format(ctr_change|abs) }}pp
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Data Table -->
+<div class="card">
+  <div class="card-header">
+    <h3>Report History</h3>
+    <a href="/api/trends-csv" class="btn btn-outline btn-sm">&#8595; CSV</a>
+  </div>
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Report</th>
+          <th style="text-align:right;">Campaigns</th>
+          <th style="text-align:right;">Impressions</th>
+          <th style="text-align:right;">Clicks</th>
+          <th style="text-align:right;">CTR</th>
+          <th style="text-align:right;">Spend</th>
+          <th style="text-align:right;">CPC</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in trends %}
+        <tr>
+          <td>{{ t.label }}</td>
+          <td style="text-align:right;">{{ t.campaigns }}</td>
+          <td style="text-align:right;">{{ '{:,}'.format(t.impressions) }}</td>
+          <td style="text-align:right;">{{ '{:,}'.format(t.clicks) }}</td>
+          <td style="text-align:right;color:{% if t.ctr >= 0.56 %}var(--success){% elif t.ctr < 0.3 %}var(--danger){% else %}var(--text){% endif %}">{{ '{:.2f}'.format(t.ctr) }}%</td>
+          <td style="text-align:right;">${{ '{:,.2f}'.format(t.spend) }}</td>
+          <td style="text-align:right;">${{ '{:.2f}'.format(t.spend / t.clicks if t.clicks else 0) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const trendData = {{ trends|tojson }};
+const labels = trendData.map(t => t.label);
+const benchmarks = {ctr: 0.56, cpc: 5.58, cpm: 33.80};
+
+// Store chart instances for updates
+var charts = {};
+
+function buildChartOpts(showLegend) {
+  return { responsive: true, plugins: { legend: { display: !!showLegend, position: 'bottom', labels: { boxWidth: 12, font: { size: 13 } } } }, scales: { y: { beginAtZero: true } } };
+}
+
+function createCharts() {
+  var showGoals = document.getElementById('showGoals').checked;
+
+  // Impressions
+  var impData = { labels: labels, datasets: [{ label: 'Impressions', data: trendData.map(t => t.impressions), borderColor: '#0A66C2', backgroundColor: 'rgba(10,102,194,0.08)', fill: true, tension: 0.4, borderWidth: 2 }] };
+  charts.imp = new Chart(document.getElementById('impTrend'), { type: 'line', data: impData, options: buildChartOpts(false) });
+
+  // Clicks
+  var clickData = { labels: labels, datasets: [{ label: 'Clicks', data: trendData.map(t => t.clicks), borderColor: '#F5A623', backgroundColor: 'rgba(245,166,35,0.08)', fill: true, tension: 0.4, borderWidth: 2 }] };
+  charts.click = new Chart(document.getElementById('clickTrend'), { type: 'line', data: clickData, options: buildChartOpts(false) });
+
+  // Spend
+  var spendData = { labels: labels, datasets: [{ label: 'Spend ($)', data: trendData.map(t => t.spend), borderColor: '#057A42', backgroundColor: 'rgba(5,122,66,0.08)', fill: true, tension: 0.4, borderWidth: 2 }] };
+  charts.spend = new Chart(document.getElementById('spendTrend'), { type: 'line', data: spendData, options: buildChartOpts(false) });
+
+  // CTR with benchmark goal line
+  var ctrDatasets = [
+    { label: 'CTR (%)', data: trendData.map(t => t.ctr), borderColor: '#8B5CF6', backgroundColor: 'rgba(139,92,246,0.08)', fill: true, tension: 0.4, borderWidth: 2 }
+  ];
+  if (showGoals) {
+    ctrDatasets.push({ label: 'Benchmark (0.56%)', data: Array(labels.length).fill(0.56), borderColor: '#CC1C39', borderDash: [5,5], pointRadius: 0, fill: false, borderWidth: 1.5 });
+  }
+  charts.ctr = new Chart(document.getElementById('ctrTrend'), {
+    type: 'line',
+    data: { labels: labels, datasets: ctrDatasets },
+    options: buildChartOpts(showGoals)
+  });
+
+  // Combined
+  charts.combined = new Chart(document.getElementById('combinedTrend'), {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        { label: 'Impressions', data: trendData.map(t => t.impressions), borderColor: '#0A66C2', tension: 0.4, yAxisID: 'y' },
+        { label: 'Clicks', data: trendData.map(t => t.clicks), borderColor: '#F5A623', tension: 0.4, yAxisID: 'y' },
+        { label: 'Spend ($)', data: trendData.map(t => t.spend), borderColor: '#057A42', tension: 0.4, yAxisID: 'y1' }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 13 } } } },
+      scales: {
+        y: { type: 'linear', position: 'left', beginAtZero: true },
+        y1: { type: 'linear', position: 'right', beginAtZero: true, grid: { drawOnChartArea: false } }
+      }
+    }
+  });
+}
+
+function updateCharts() {
+  var metric = document.getElementById('metricSelector').value;
+  var showGoals = document.getElementById('showGoals').checked;
+
+  // Destroy existing charts
+  Object.values(charts).forEach(function(c) { if (c) c.destroy(); });
+  charts = {};
+
+  if (metric === 'all') {
+    document.getElementById('multiMetricView').style.display = 'block';
+    document.getElementById('singleMetricView').style.display = 'none';
+    createCharts();
+  } else {
+    document.getElementById('multiMetricView').style.display = 'none';
+    document.getElementById('singleMetricView').style.display = 'block';
+
+    var configs = {
+      impressions: { label: 'Impressions', color: '#0A66C2', field: 'impressions', prefix: '', suffix: '' },
+      clicks: { label: 'Clicks', color: '#F5A623', field: 'clicks', prefix: '', suffix: '' },
+      spend: { label: 'Spend', color: '#057A42', field: 'spend', prefix: '$', suffix: '' },
+      ctr: { label: 'CTR', color: '#8B5CF6', field: 'ctr', prefix: '', suffix: '%', benchmark: 0.56 },
+      cpc: { label: 'CPC', color: '#CC1C39', field: 'cpc', prefix: '$', suffix: '', benchmark: 5.58 }
+    };
+    var cfg = configs[metric];
+    document.getElementById('singleMetricTitle').textContent = cfg.label + ' Over Time';
+
+    var values = trendData.map(function(t) {
+      if (metric === 'cpc') return t.clicks ? (t.spend / t.clicks) : 0;
+      return t[cfg.field];
+    });
+
+    var datasets = [{ label: cfg.label, data: values, borderColor: cfg.color, backgroundColor: cfg.color + '15', fill: true, tension: 0.4, borderWidth: 2.5, pointRadius: 4 }];
+    if (showGoals && cfg.benchmark) {
+      datasets.push({ label: 'Benchmark (' + cfg.prefix + cfg.benchmark + cfg.suffix + ')', data: Array(labels.length).fill(cfg.benchmark), borderColor: '#CC1C39', borderDash: [6,4], pointRadius: 0, fill: false, borderWidth: 1.5 });
+    }
+
+    charts.single = new Chart(document.getElementById('singleChart'), {
+      type: 'line',
+      data: { labels: labels, datasets: datasets },
+      options: buildChartOpts(datasets.length > 1)
+    });
+
+    // Stats summary
+    var sum = values.reduce(function(a, b) { return a + b; }, 0);
+    var avg = sum / values.length;
+    var max = Math.max.apply(null, values);
+    var min = Math.min.apply(null, values);
+    var change = values.length >= 2 ? ((values[values.length-1] - values[values.length-2]) / (values[values.length-2] || 1) * 100) : 0;
+    var fmt = function(v) { return cfg.prefix + (v >= 1000 ? v.toLocaleString(undefined, {maximumFractionDigits:0}) : v.toFixed(2)) + cfg.suffix; };
+    document.getElementById('metricStats').innerHTML =
+      '<div class="kpi-card"><div class="kpi-label">Latest</div><div class="kpi-value" style="font-size:24px;">' + fmt(values[values.length-1]) + '</div></div>' +
+      '<div class="kpi-card"><div class="kpi-label">Average</div><div class="kpi-value" style="font-size:24px;">' + fmt(avg) + '</div></div>' +
+      '<div class="kpi-card"><div class="kpi-label">Peak</div><div class="kpi-value" style="font-size:24px;">' + fmt(max) + '</div></div>' +
+      '<div class="kpi-card"><div class="kpi-label">Low</div><div class="kpi-value" style="font-size:24px;">' + fmt(min) + '</div></div>' +
+      '<div class="kpi-card"><div class="kpi-label">Change</div><div class="kpi-value kpi-change ' + (change >= 0 ? 'up' : 'down') + '" style="font-size:24px;">' + (change >= 0 ? '&#9650;' : '&#9660;') + ' ' + Math.abs(change).toFixed(1) + '%</div></div>';
+  }
+}
+
+function exportChart(canvasId, name) {
+  var canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  var link = document.createElement('a');
+  link.download = 'trends_' + name + '.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+  showToast('Chart downloaded', 'success');
+}
+
+function exportAllCharts() {
+  var canvases = document.querySelectorAll('canvas');
+  canvases.forEach(function(c, i) {
+    if (c.offsetParent === null) return; // skip hidden
+    var link = document.createElement('a');
+    link.download = 'trends_chart_' + (i+1) + '.png';
+    link.href = c.toDataURL('image/png');
+    link.click();
+  });
+  showToast('All visible charts downloaded', 'success');
+}
+
+// Initialize
+createCharts();
+</script>
+
+{% else %}
+<div class="empty-state">
+  <div class="icon">&#128200;</div>
+  <p>Generate at least 2 reports to see trend data.</p>
+  <a href="{{ url_for('generate') }}" class="btn btn-primary">Generate Report</a>
+</div>
+{% endif %}
+{% endblock %}

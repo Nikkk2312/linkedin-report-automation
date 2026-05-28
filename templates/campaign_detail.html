@@ -1,0 +1,298 @@
+{% extends "base.html" %}
+{% set report_name = report_name %}
+{% block title %}{{ campaign.get('display_name', 'Campaign') }} - Detail{% endblock %}
+{% block page_title %}Campaign Detail{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('dashboard') }}">Dashboard</a> / <a href="{{ url_for('view_report', report_name=report_name) }}">{{ report_name[:20] }}</a> / {{ campaign.get('display_name', campaign.get('name', 'Unknown'))[:30] }}{% endblock %}
+
+{% block content %}
+{% set ctr = campaign.get('ctr', 0) or 0 %}
+{% set cpc = campaign.get('cpc', 0) or 0 %}
+{% set imp = campaign.get('impressions', 0) or 0 %}
+{% set clicks = campaign.get('clicks', 0) or 0 %}
+{% set spend = campaign.get('cost_usd', 0) or 0 %}
+{% set eng = campaign.get('engagements', 0) or 0 %}
+{% set eng_rate = (eng / imp * 100) if imp else 0 %}
+{% set leads = campaign.get('oneClickLeads', 0) or campaign.get('one_click_leads', 0) or 0 %}
+
+<!-- Campaign Header -->
+<div class="card" style="border-left:4px solid var(--primary);">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+    <div>
+      <h3 style="margin-bottom:4px;font-size:18px;text-transform:none;">{{ campaign.get('display_name', campaign.get('name', 'Unknown')) }}</h3>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span class="badge {% if campaign.get('status') == 'ACTIVE' %}badge-success{% elif campaign.get('status') == 'PAUSED' %}badge-warning{% else %}badge-neutral{% endif %}">{{ campaign.get('status', 'N/A') }}</span>
+        <span class="badge badge-info">{{ campaign.get('campaign_type', 'N/A') }}</span>
+        {% if campaign.get('objective_type') %}<span class="badge badge-neutral">{{ campaign.get('objective_type') }}</span>{% endif %}
+        <span style="font-size:14px;color:var(--muted);">ID: {{ campaign.get('id', 'N/A') }}</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-outline btn-sm" onclick="copyToClipboard(window.location.href, 'Campaign link')">&#128279; Copy Link</button>
+      <a href="{{ url_for('view_report', report_name=report_name) }}" class="btn btn-outline btn-sm">&#8592; Back to Report</a>
+    </div>
+  </div>
+</div>
+
+<!-- KPIs -->
+<div class="kpi-grid">
+  <div class="kpi-card" data-tooltip="Total impressions for this campaign">
+    <div class="kpi-label">Impressions</div>
+    <div class="kpi-value">{{ '{:,}'.format(imp) }}</div>
+  </div>
+  <div class="kpi-card" data-tooltip="Total clicks">
+    <div class="kpi-label">Clicks</div>
+    <div class="kpi-value">{{ '{:,}'.format(clicks) }}</div>
+  </div>
+  <div class="kpi-card" data-tooltip="Click-through rate vs 0.56% benchmark">
+    <div class="kpi-label">CTR</div>
+    <div class="kpi-value" style="color:{% if ctr >= 0.56 %}var(--success){% else %}var(--danger){% endif %}">{{ '{:.2f}'.format(ctr) }}%</div>
+    <div class="kpi-sub">Benchmark: 0.56%</div>
+  </div>
+  <div class="kpi-card" data-tooltip="Total campaign spend">
+    <div class="kpi-label">Spend</div>
+    <div class="kpi-value">${{ '{:,.2f}'.format(spend) }}</div>
+  </div>
+  <div class="kpi-card" data-tooltip="Cost per click vs $5.58 benchmark">
+    <div class="kpi-label">CPC</div>
+    <div class="kpi-value" style="color:{% if cpc <= 5.58 %}var(--success){% else %}var(--danger){% endif %}">${{ '{:.2f}'.format(cpc) }}</div>
+    <div class="kpi-sub">Benchmark: $5.58</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Engagements</div>
+    <div class="kpi-value">{{ '{:,}'.format(eng) }}</div>
+    <div class="kpi-sub">{{ '{:.2f}'.format(eng_rate) }}% rate</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">CPM</div>
+    <div class="kpi-value">${{ '{:.2f}'.format(spend / imp * 1000 if imp else 0) }}</div>
+    <div class="kpi-sub">Benchmark: $33.80</div>
+  </div>
+  {% if leads > 0 %}
+  <div class="kpi-card">
+    <div class="kpi-label">Leads</div>
+    <div class="kpi-value">{{ leads }}</div>
+    <div class="kpi-sub">${{ '{:.2f}'.format(spend / leads if leads else 0) }} CPL</div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Health Score -->
+<div class="card">
+  <h3>Campaign Health Score</h3>
+  <div style="display:flex;gap:24px;align-items:center;margin-top:12px;">
+    {% set ctr_s = ([ctr / 0.56 * 50, 100]|min)|int %}
+    {% set cpc_s = (([5.58 / cpc * 50, 100]|min) if cpc > 0 else 50)|int %}
+    {% set eng_s = ([eng_rate / 0.5 * 50, 100]|min)|int %}
+    {% set health = (ctr_s * 0.4 + cpc_s * 0.35 + eng_s * 0.25)|int %}
+    <div style="text-align:center;">
+      <div class="score {% if health >= 60 %}score-high{% elif health >= 30 %}score-mid{% else %}score-low{% endif %}" style="width:64px;height:64px;font-size:22px;">{{ health }}</div>
+      <div style="font-size:14px;color:var(--muted);margin-top:4px;">Overall</div>
+    </div>
+    <div style="flex:1;">
+      <div style="margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;font-size:14px;"><span>CTR Score (40%)</span><span>{{ ctr_s }}/100</span></div>
+        <div class="progress" style="height:8px;"><div class="progress-bar" style="width:{{ ctr_s }}%;background:{% if ctr_s >= 60 %}var(--success){% elif ctr_s >= 30 %}var(--accent){% else %}var(--danger){% endif %};"></div></div>
+      </div>
+      <div style="margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;font-size:14px;"><span>CPC Score (35%)</span><span>{{ cpc_s }}/100</span></div>
+        <div class="progress" style="height:8px;"><div class="progress-bar" style="width:{{ cpc_s }}%;background:{% if cpc_s >= 60 %}var(--success){% elif cpc_s >= 30 %}var(--accent){% else %}var(--danger){% endif %};"></div></div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;font-size:14px;"><span>Engagement Score (25%)</span><span>{{ eng_s }}/100</span></div>
+        <div class="progress" style="height:8px;"><div class="progress-bar" style="width:{{ eng_s }}%;background:{% if eng_s >= 60 %}var(--success){% elif eng_s >= 30 %}var(--accent){% else %}var(--danger){% endif %};"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Engagement Breakdown -->
+<div class="grid-2">
+  <div class="card">
+    <h3>Engagement Breakdown</h3>
+    <canvas id="engChart" height="250"></canvas>
+  </div>
+  <div class="card">
+    <h3>Key Metrics Radar</h3>
+    <canvas id="radarChart" height="250"></canvas>
+  </div>
+</div>
+
+<!-- Social Metrics -->
+<div class="card">
+  <h3>Social Metrics</h3>
+  <div class="kpi-grid" style="margin-top:12px;">
+    <div class="kpi-card">
+      <div class="kpi-label">Likes</div>
+      <div class="kpi-value" style="font-size:20px;">{{ '{:,}'.format(campaign.get('likes', 0) or 0) }}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Comments</div>
+      <div class="kpi-value" style="font-size:20px;">{{ '{:,}'.format(campaign.get('comments', 0) or 0) }}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Shares</div>
+      <div class="kpi-value" style="font-size:20px;">{{ '{:,}'.format(campaign.get('shares', 0) or 0) }}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Video Views</div>
+      <div class="kpi-value" style="font-size:20px;">{{ '{:,}'.format(campaign.get('video_views', 0) or 0) }}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Viral Impressions</div>
+      <div class="kpi-value" style="font-size:20px;">{{ '{:,}'.format(campaign.get('viral_impressions', 0) or 0) }}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Follows</div>
+      <div class="kpi-value" style="font-size:20px;">{{ '{:,}'.format(campaign.get('follows', 0) or 0) }}</div>
+    </div>
+  </div>
+</div>
+
+<!-- Monthly Trends (if available) -->
+{% if campaign.get('monthly_trends') %}
+<div class="card">
+  <h3>Monthly Trends</h3>
+  <canvas id="monthlyChart" height="250"></canvas>
+</div>
+{% endif %}
+
+<!-- Demographics (if available) -->
+{% if campaign.get('demographics') %}
+<div class="card">
+  <h3>Demographics Overview</h3>
+  <div class="tabs">
+    {% for key in campaign.demographics.keys() %}
+    <button class="tab {% if loop.first %}active{% endif %}" data-tab="demo-{{ loop.index }}">{{ key.replace('MEMBER_','').replace('_V2','').replace('_',' ').title() }}</button>
+    {% endfor %}
+  </div>
+  {% for key, entries in campaign.demographics.items() %}
+  <div class="tab-content {% if loop.first %}active{% endif %}" id="demo-{{ loop.index }}">
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>Segment</th><th style="text-align:right;">Impressions</th><th style="text-align:right;">Clicks</th><th style="text-align:right;">CTR</th></tr></thead>
+        <tbody>
+          {% for e in entries[:15] %}
+          {% set e_ctr = (e.get('clicks',0) / e.get('impressions',1) * 100) if e.get('impressions') else 0 %}
+          <tr>
+            <td style="font-weight:600;">{{ e.get('displayName', 'Unknown') }}</td>
+            <td style="text-align:right;">{{ '{:,}'.format(e.get('impressions', 0) or 0) }}</td>
+            <td style="text-align:right;">{{ '{:,}'.format(e.get('clicks', 0) or 0) }}</td>
+            <td style="text-align:right;color:{% if e_ctr >= 0.56 %}var(--success){% else %}var(--text){% endif %};">{{ '{:.2f}'.format(e_ctr) }}%</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Notes -->
+<div class="card">
+  <h3>Notes & Annotations</h3>
+  <div style="display:flex;gap:8px;margin-bottom:12px;">
+    <input type="text" id="noteInput" placeholder="Add a note about this campaign..." style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--card);color:var(--text);">
+    <button class="btn btn-primary btn-sm" onclick="addNote()">Add Note</button>
+  </div>
+  <div id="notesContainer" style="font-size:14px;"></div>
+</div>
+
+<!-- Raw Data -->
+<details class="card" style="cursor:pointer;">
+  <summary style="font-size:16px;font-weight:600;color:var(--primary);">Raw Campaign Data (JSON)</summary>
+  <pre style="margin-top:12px;padding:12px;background:var(--hover);border-radius:8px;font-size:14px;max-height:400px;overflow:auto;white-space:pre-wrap;">{{ campaign|tojson(indent=2) }}</pre>
+</details>
+
+<script>
+// Engagement chart
+new Chart(document.getElementById('engChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Likes', 'Comments', 'Shares', 'Other Engagements'],
+    datasets: [{
+      data: [
+        {{ campaign.get('likes', 0) or 0 }},
+        {{ campaign.get('comments', 0) or 0 }},
+        {{ campaign.get('shares', 0) or 0 }},
+        {{ (eng - (campaign.get('likes',0) or 0) - (campaign.get('comments',0) or 0) - (campaign.get('shares',0) or 0))|abs }}
+      ],
+      backgroundColor: ['#0A66C2', '#F5A623', '#057A42', '#8B5CF6']
+    }]
+  },
+  options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 13 } } } } }
+});
+
+// Radar chart
+new Chart(document.getElementById('radarChart'), {
+  type: 'radar',
+  data: {
+    labels: ['CTR', 'CPC Efficiency', 'Engagement', 'Volume', 'Cost Efficiency'],
+    datasets: [{
+      label: 'This Campaign',
+      data: [
+        Math.min({{ ctr }} / 0.56 * 100, 100),
+        {{ cpc_s }},
+        {{ eng_s }},
+        Math.min({{ imp }} / 10000 * 100, 100),
+        Math.min(5.58 / ({{ cpc }} || 5.58) * 100, 100)
+      ],
+      borderColor: '#0A66C2',
+      backgroundColor: 'rgba(10,102,194,0.15)',
+      pointBackgroundColor: '#0A66C2'
+    }]
+  },
+  options: { responsive: true, scales: { r: { beginAtZero: true, max: 100 } }, plugins: { legend: { display: false } } }
+});
+
+{% if campaign.get('monthly_trends') %}
+// Monthly trends
+var months = {{ campaign.monthly_trends|map(attribute='month')|list|tojson }};
+new Chart(document.getElementById('monthlyChart'), {
+  type: 'line',
+  data: {
+    labels: months,
+    datasets: [
+      { label: 'Impressions', data: {{ campaign.monthly_trends|map(attribute='impressions')|list|tojson }}, borderColor: '#0A66C2', tension: 0.3, yAxisID: 'y' },
+      { label: 'Clicks', data: {{ campaign.monthly_trends|map(attribute='clicks')|list|tojson }}, borderColor: '#F5A623', tension: 0.3, yAxisID: 'y' },
+      { label: 'Spend', data: {{ campaign.monthly_trends|map(attribute='cost')|list|tojson }}, borderColor: '#057A42', tension: 0.3, yAxisID: 'y1' }
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 13 } } } },
+    scales: {
+      y: { type: 'linear', position: 'left', beginAtZero: true },
+      y1: { type: 'linear', position: 'right', beginAtZero: true, grid: { drawOnChartArea: false } }
+    }
+  }
+});
+{% endif %}
+
+// Notes
+async function loadNotes() {
+  try {
+    var r = await fetch('/api/notes/{{ report_name }}_{{ campaign.get("id","") }}');
+    var notes = await r.json();
+    var html = '';
+    notes.forEach(function(n) {
+      html += '<div style="padding:8px 0;border-bottom:1px solid var(--border);"><span style="color:var(--muted);font-size:14px;">' + n.time + '</span><br>' + n.text + '</div>';
+    });
+    document.getElementById('notesContainer').innerHTML = html || '<span style="color:var(--muted);">No notes yet.</span>';
+  } catch(e) {}
+}
+async function addNote() {
+  var input = document.getElementById('noteInput');
+  var text = input.value.trim();
+  if (!text) return;
+  await fetch('/api/notes/{{ report_name }}_{{ campaign.get("id","") }}', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({note: text})
+  });
+  input.value = '';
+  showToast('Note added', 'success');
+  loadNotes();
+}
+loadNotes();
+</script>
+{% endblock %}

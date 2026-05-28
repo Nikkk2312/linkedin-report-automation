@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Report Templates - LinkedIn Report Automation{% endblock %}
+{% block page_title %}Report Templates{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('dashboard') }}">Dashboard</a> / Templates{% endblock %}
+
+{% block content %}
+<div class="alert alert-info">
+  <span>&#128196;</span>
+  <span>Report templates are pre-configured generation options. Click "Use Template" to generate a report with those settings.</span>
+</div>
+
+<div class="grid-3">
+  {% for t in templates %}
+  <div class="card" style="display:flex;flex-direction:column;">
+    <h3 style="margin-bottom:8px;text-transform:none;">{{ t.name }}</h3>
+    <p style="font-size:15px;color:var(--muted);flex:1;">{{ t.description }}</p>
+    <div style="margin:12px 0;display:flex;gap:6px;flex-wrap:wrap;">
+      <span class="badge badge-info">{{ t.campaigns }}</span>
+      {% if t.html %}<span class="badge badge-success">HTML</span>{% endif %}
+      {% if t.ai %}<span class="badge badge-success">AI</span>{% endif %}
+      <span class="badge badge-neutral">PPTX</span>
+    </div>
+    <form method="POST" action="{{ url_for('generate') }}">
+      <input type="hidden" name="token" value="{{ env.get('LINKEDIN_ACCESS_TOKEN', '') }}">
+      <input type="hidden" name="account_id" value="{{ env.get('LINKEDIN_ACCOUNT_ID', '') }}">
+      <input type="hidden" name="campaigns" value="{{ t.campaigns }}">
+      <input type="hidden" name="report_title" value="{{ t.name }}_{{ now }}">
+      {% if t.html %}<input type="hidden" name="generate_html" value="on">{% endif %}
+      {% if t.ai %}<input type="hidden" name="include_ai" value="on">{% endif %}
+      <input type="hidden" name="email_recipients" value="{{ env.get('REPORT_RECIPIENTS', '') }}">
+      <button type="submit" class="btn btn-primary btn-sm" style="width:100%;">&#9889; Use Template</button>
+    </form>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Custom Template -->
+<div class="card" style="max-width:600px;margin-top:20px;">
+  <h3 style="margin-bottom:12px;">Quick Generate from Dashboard</h3>
+  <p style="font-size:15px;color:var(--muted);margin-bottom:14px;">
+    Need a custom configuration? Use the full <a href="{{ url_for('generate') }}" style="color:var(--primary);">Generate Report</a> page for complete control over all options.
+  </p>
+  <a href="{{ url_for('generate') }}" class="btn btn-outline">&#9889; Custom Report</a>
+</div>
+{% endblock %}

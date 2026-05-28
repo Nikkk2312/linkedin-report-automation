@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% set report_name = report_name %}
+{% block title %}Funnel - {{ report_name }}{% endblock %}
+{% block page_title %}Conversion Funnel{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('dashboard') }}">Dashboard</a> / <a href="{{ url_for('view_report', report_name=report_name) }}">{{ report_name[:20] }}</a> / Funnel{% endblock %}
+
+{% block content %}
+<!-- Overall Funnel -->
+<div class="card">
+  <div class="card-header">
+    <h3>Campaign Performance Funnel</h3>
+    <div class="card-subtitle">Aggregated across {{ campaigns|length }} campaigns</div>
+  </div>
+  <div class="funnel" id="mainFunnel">
+    {% set steps = [
+      ('Impressions', agg.total_imp, '#0A66C2'),
+      ('Clicks', agg.total_clicks, '#004B87'),
+      ('Engagements', agg.total_eng, '#F5A623'),
+      ('Leads', agg.total_leads, '#057A42'),
+    ] %}
+    {% for label, value, color in steps %}
+    {% if value > 0 or loop.first %}
+    <div class="funnel-step">
+      <div class="funnel-label">{{ label }}</div>
+      <div class="funnel-bar" style="width:{{ (value / agg.total_imp * 100) if agg.total_imp else 0 }}%;background:{{ color }};min-width:{{ 100 - loop.index0 * 20 }}%;">
+        {{ '{:,}'.format(value) }}
+      </div>
+      <div class="funnel-value">
+        {% if not loop.first and agg.total_imp %}
+        {{ '{:.2f}'.format(value / agg.total_imp * 100) }}% of impressions
+        {% endif %}
+      </div>
+    </div>
+    {% if not loop.last %}
+    <div class="funnel-arrow">
+      {% if loop.index < steps|length %}
+      {% set next_val = steps[loop.index][1] %}
+      {% if value > 0 %}&#9660; {{ '{:.1f}'.format(next_val / value * 100) }}% conversion{% endif %}
+      {% endif %}
+    </div>
+    {% endif %}
+    {% endif %}
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Conversion Rates -->
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-label">Click-through Rate</div>
+    <div class="kpi-value" style="color:{% if agg.overall_ctr >= 0.56 %}var(--success){% else %}var(--danger){% endif %}">{{ '{:.2f}'.format(agg.overall_ctr) }}%</div>
+    <div class="kpi-sub">Impressions &#8594; Clicks</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Engagement Rate</div>
+    <div class="kpi-value">{{ '{:.2f}'.format(agg.eng_rate) }}%</div>
+    <div class="kpi-sub">Impressions &#8594; Engagements</div>
+  </div>
+  {% if agg.total_leads > 0 %}
+  <div class="kpi-card">
+    <div class="kpi-label">Lead Conversion</div>
+    <div class="kpi-value">{{ '{:.3f}'.format(agg.total_leads / agg.total_imp * 100 if agg.total_imp else 0) }}%</div>
+    <div class="kpi-sub">Impressions &#8594; Leads</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Cost per Lead</div>
+    <div class="kpi-value">${{ '{:.2f}'.format(agg.total_spend / agg.total_leads if agg.total_leads else 0) }}</div>
+    <div class="kpi-sub">Total spend / leads</div>
+  </div>
+  {% endif %}
+  <div class="kpi-card">
+    <div class="kpi-label">Cost per Click</div>
+    <div class="kpi-value" style="color:{% if agg.overall_cpc <= 5.58 %}var(--success){% else %}var(--danger){% endif %}">${{ '{:.2f}'.format(agg.overall_cpc) }}</div>
+    <div class="kpi-sub">Benchmark: $5.58</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Cost per Engagement</div>
+    <div class="kpi-value">${{ '{:.2f}'.format(agg.total_spend / agg.total_eng if agg.total_eng else 0) }}</div>
+  </div>
+</div>
+
+<!-- Per-Campaign Funnels -->
+<div class="card">
+  <div class="card-header">
+    <h3>Per-Campaign Funnels</h3>
+  </div>
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Campaign</th>
+          <th style="text-align:right;">Impressions</th>
+          <th style="text-align:right;">Clicks</th>
+          <th style="text-align:right;">CTR</th>
+          <th style="text-align:right;">Engagements</th>
+          <th style="text-align:right;">Eng Rate</th>
+          <th style="text-align:right;">Leads</th>
+          <th style="text-align:right;">Spend</th>
+          <th>Health</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in campaigns %}
+        {% set imp = c.get('impressions', 0) or 0 %}
+        {% set clicks = c.get('clicks', 0) or 0 %}
+        {% set eng = c.get('engagements', 0) or 0 %}
+        {% set leads = c.get('oneClickLeads', 0) or c.get('one_click_leads', 0) or 0 %}
+        {% set ctr = c.get('ctr', 0) or 0 %}
+        {% set eng_rate = (eng / imp * 100) if imp else 0 %}
+        {% set cpc = c.get('cpc', 0) or 0 %}
+        {% set score = ((ctr / 0.56 * 50)|int, 100)|min * 0.4 + ((5.58 / cpc * 50 if cpc > 0 else 50)|int, 100)|min * 0.35 + ((eng_rate / 0.5 * 50)|int, 100)|min * 0.25 %}
+        <tr>
+          <td style="font-weight:600;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ c.get('display_name', c.get('name', 'Unknown')) }}</td>
+          <td style="text-align:right;">{{ '{:,}'.format(imp) }}</td>
+          <td style="text-align:right;">{{ '{:,}'.format(clicks) }}</td>
+          <td style="text-align:right;color:{% if ctr >= 0.56 %}var(--success){% else %}var(--danger){% endif %};">{{ '{:.2f}'.format(ctr) }}%</td>
+          <td style="text-align:right;">{{ '{:,}'.format(eng) }}</td>
+          <td style="text-align:right;">{{ '{:.2f}'.format(eng_rate) }}%</td>
+          <td style="text-align:right;">{{ leads }}</td>
+          <td style="text-align:right;">${{ '{:,.2f}'.format(c.get('cost_usd', 0) or 0) }}</td>
+          <td>
+            <div class="progress" style="width:80px;height:6px;display:inline-block;vertical-align:middle;">
+              <div class="progress-bar" style="width:{{ score|int }}%;background:{% if score >= 60 %}var(--success){% elif score >= 30 %}var(--accent){% else %}var(--danger){% endif %};"></div>
+            </div>
+            <span style="font-size:14px;margin-left:4px;">{{ score|int }}</span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Funnel Chart -->
+<div class="card">
+  <h3>Visual Funnel Comparison</h3>
+  <canvas id="funnelChart" height="300"></canvas>
+</div>
+
+<script>
+var campNames = {{ campaigns|map(attribute='display_name')|list|tojson }};
+var shortNames = campNames.map(function(n) { return n ? n.substring(0, 20) : 'Unknown'; });
+var chartColors = ['#0A66C2','#004B87','#F5A623','#057A42','#CC1C39','#8B5CF6','#06B6D4','#F97316','#10B981','#EF4444'];
+
+new Chart(document.getElementById('funnelChart'), {
+  type: 'bar',
+  data: {
+    labels: shortNames,
+    datasets: [
+      { label: 'Impressions', data: {{ campaigns|map(attribute='impressions')|list|tojson }}, backgroundColor: '#0A66C2' },
+      { label: 'Clicks', data: {{ campaigns|map(attribute='clicks')|list|tojson }}, backgroundColor: '#004B87' },
+      { label: 'Engagements', data: {{ campaigns|map(attribute='engagements')|list|tojson }}, backgroundColor: '#F5A623' }
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 13 } } } },
+    scales: { y: { beginAtZero: true } }
+  }
+});
+</script>
+{% endblock %}

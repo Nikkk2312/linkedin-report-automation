@@ -1,0 +1,410 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - LinkedIn Report Automation{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block breadcrumb %}Overview{% endblock %}
+{% block topbar_actions %}<a href="{{ url_for('generate') }}" class="btn btn-primary btn-sm">+ New Report</a>{% endblock %}
+
+{% block content %}
+{% if needs_onboarding %}
+<!-- Onboarding Wizard -->
+<div class="card" style="border-left:4px solid var(--primary);padding:28px;">
+  <h3 style="font-size:20px;margin-bottom:16px;color:var(--text);text-transform:none;letter-spacing:0;">Welcome to LinkedIn Report Automation</h3>
+  <p style="color:var(--muted);margin-bottom:20px;font-size:15px;">Get started in 3 simple steps:</p>
+  <div class="kpi-grid" style="grid-template-columns:repeat(3, 1fr);gap:16px;">
+    <div class="card" style="text-align:center;padding:20px;border:2px dashed var(--border);">
+      <div style="font-size:28px;margin-bottom:8px;">1&#65039;&#8419;</div>
+      <div style="font-weight:700;margin-bottom:4px;">Configure API</div>
+      <p style="font-size:15px;color:var(--muted);margin-bottom:12px;">Add your LinkedIn access token and ad account ID</p>
+      <a href="{{ url_for('settings') }}" class="btn btn-primary btn-sm">Go to Settings</a>
+    </div>
+    <div class="card" style="text-align:center;padding:20px;border:2px dashed var(--border);">
+      <div style="font-size:28px;margin-bottom:8px;">2&#65039;&#8419;</div>
+      <div style="font-weight:700;margin-bottom:4px;">Generate Report</div>
+      <p style="font-size:15px;color:var(--muted);margin-bottom:12px;">Pull data from LinkedIn and create your first report</p>
+      <a href="{{ url_for('generate') }}" class="btn btn-outline btn-sm">Generate Report</a>
+    </div>
+    <div class="card" style="text-align:center;padding:20px;border:2px dashed var(--border);">
+      <div style="font-size:28px;margin-bottom:8px;">3&#65039;&#8419;</div>
+      <div style="font-weight:700;margin-bottom:4px;">Analyze & Share</div>
+      <p style="font-size:15px;color:var(--muted);margin-bottom:12px;">View insights, demographics, and export reports</p>
+      <span class="badge badge-neutral">After generating</span>
+    </div>
+  </div>
+</div>
+{% elif not has_token or not has_account %}
+<div class="alert alert-warning" style="justify-content:space-between;">
+  <span>&#9888; Configure LinkedIn API credentials to start generating reports.</span>
+  <a href="{{ url_for('settings') }}" class="btn btn-primary btn-sm">Setup Now</a>
+</div>
+{% endif %}
+
+<!-- KPI Cards -->
+{% if kpis %}
+<div class="kpi-grid">
+  <div class="kpi-card" data-tooltip="Total times your ads were shown">
+    <span class="kpi-info">&#9432;</span>
+    <div class="kpi-label">Impressions</div>
+    <div class="kpi-value">{{ '{:,}'.format(kpis.total_imp) }}</div>
+    {% if prev_kpis and prev_kpis.total_imp %}
+    {% set pct = ((kpis.total_imp - prev_kpis.total_imp) / prev_kpis.total_imp * 100) %}
+    <div class="kpi-change {% if pct >= 0 %}up{% else %}down{% endif %}">{% if pct >= 0 %}&#9650;{% else %}&#9660;{% endif %} {{ '{:.1f}'.format(pct|abs) }}% vs prev</div>
+    {% else %}
+    <div class="kpi-sub">Across all campaigns</div>
+    {% endif %}
+  </div>
+  <div class="kpi-card" data-tooltip="Total link clicks on your ads">
+    <span class="kpi-info">&#9432;</span>
+    <div class="kpi-label">Clicks</div>
+    <div class="kpi-value">{{ '{:,}'.format(kpis.total_clicks) }}</div>
+    {% if prev_kpis and prev_kpis.total_clicks %}
+    {% set pct = ((kpis.total_clicks - prev_kpis.total_clicks) / prev_kpis.total_clicks * 100) %}
+    <div class="kpi-change {% if pct >= 0 %}up{% else %}down{% endif %}">{% if pct >= 0 %}&#9650;{% else %}&#9660;{% endif %} {{ '{:.1f}'.format(pct|abs) }}% vs prev</div>
+    {% else %}
+    <div class="kpi-sub">Total clicks</div>
+    {% endif %}
+  </div>
+  <div class="kpi-card" data-tooltip="Click-Through Rate. LinkedIn benchmark: 0.56%">
+    <span class="kpi-info">&#9432;</span>
+    <div class="kpi-label">CTR</div>
+    <div class="kpi-value" style="color:{% if kpis.overall_ctr >= 0.56 %}var(--success){% else %}var(--danger){% endif %}">{{ '{:.2f}'.format(kpis.overall_ctr) }}%</div>
+    {% if prev_kpis %}
+    {% set diff = kpis.overall_ctr - prev_kpis.overall_ctr %}
+    <div class="kpi-change {% if diff >= 0 %}up{% else %}down{% endif %}">{% if diff >= 0 %}&#9650;{% else %}&#9660;{% endif %} {{ '{:.2f}'.format(diff|abs) }}pp vs prev</div>
+    {% else %}
+    <div class="kpi-sub">Benchmark: 0.56% {% if kpis.overall_ctr >= 0.56 %}&#9650;{% else %}&#9660;{% endif %}</div>
+    {% endif %}
+  </div>
+  <div class="kpi-card" data-tooltip="Total advertising spend in USD">
+    <span class="kpi-info">&#9432;</span>
+    <div class="kpi-label">Spend</div>
+    <div class="kpi-value">${{ '{:,.0f}'.format(kpis.total_spend) }}</div>
+    {% if prev_kpis and prev_kpis.total_spend %}
+    {% set pct = ((kpis.total_spend - prev_kpis.total_spend) / prev_kpis.total_spend * 100) %}
+    <div class="kpi-change {% if pct <= 0 %}up{% else %}down{% endif %}">{% if pct >= 0 %}&#9650;{% else %}&#9660;{% endif %} {{ '{:.1f}'.format(pct|abs) }}%</div>
+    {% else %}
+    <div class="kpi-sub">Total investment</div>
+    {% endif %}
+  </div>
+  <div class="kpi-card" data-tooltip="Average Cost Per Click. LinkedIn benchmark: $5.58">
+    <span class="kpi-info">&#9432;</span>
+    <div class="kpi-label">Avg CPC</div>
+    <div class="kpi-value" style="color:{% if kpis.overall_cpc <= 5.58 %}var(--success){% else %}var(--danger){% endif %}">${{ '{:.2f}'.format(kpis.overall_cpc) }}</div>
+    {% if prev_kpis and prev_kpis.overall_cpc %}
+    {% set pct = ((kpis.overall_cpc - prev_kpis.overall_cpc) / prev_kpis.overall_cpc * 100) %}
+    <div class="kpi-change {% if pct <= 0 %}up{% else %}down{% endif %}">{% if pct >= 0 %}&#9650;{% else %}&#9660;{% endif %} {{ '{:.1f}'.format(pct|abs) }}%</div>
+    {% else %}
+    <div class="kpi-sub">Benchmark: $5.58 {% if kpis.overall_cpc <= 5.58 %}&#9650;{% else %}&#9660;{% endif %}</div>
+    {% endif %}
+  </div>
+  <div class="kpi-card" data-tooltip="Total engagement actions (likes, comments, shares, clicks)">
+    <span class="kpi-info">&#9432;</span>
+    <div class="kpi-label">Engagements</div>
+    <div class="kpi-value">{{ '{:,}'.format(kpis.total_eng) }}</div>
+    {% if prev_kpis and prev_kpis.total_eng %}
+    {% set pct = ((kpis.total_eng - prev_kpis.total_eng) / prev_kpis.total_eng * 100) %}
+    <div class="kpi-change {% if pct >= 0 %}up{% else %}down{% endif %}">{% if pct >= 0 %}&#9650;{% else %}&#9660;{% endif %} {{ '{:.1f}'.format(pct|abs) }}% vs prev</div>
+    {% else %}
+    <div class="kpi-sub">{{ '{:.2f}'.format(kpis.eng_rate) }}% rate</div>
+    {% endif %}
+  </div>
+  {% if kpis.total_leads > 0 %}
+  <div class="kpi-card" data-tooltip="One-click leads generated">
+    <span class="kpi-info">&#9432;</span>
+    <div class="kpi-label">Leads</div>
+    <div class="kpi-value">{{ '{:,}'.format(kpis.total_leads) }}</div>
+    <div class="kpi-sub">${{ '{:.2f}'.format(kpis.total_spend / kpis.total_leads if kpis.total_leads else 0) }} CPL</div>
+  </div>
+  {% endif %}
+  <div class="kpi-card" data-tooltip="CPM = cost per 1000 impressions. Benchmark: $33.80">
+    <span class="kpi-info">&#9432;</span>
+    <div class="kpi-label">CPM</div>
+    <div class="kpi-value" style="color:{% if kpis.overall_cpm <= 33.80 %}var(--success){% else %}var(--danger){% endif %}">${{ '{:.2f}'.format(kpis.overall_cpm) }}</div>
+    <div class="kpi-sub">Benchmark: $33.80</div>
+  </div>
+</div>
+{% else %}
+<div class="kpi-grid">
+  <div class="kpi-card"><div class="kpi-label">Reports</div><div class="kpi-value">{{ total_reports }}</div></div>
+  <div class="kpi-card"><div class="kpi-label">API Status</div><div class="kpi-value" style="font-size:20px;">{% if has_token %}&#10003; Connected{% else %}&#10007; Not Set{% endif %}</div></div>
+  <div class="kpi-card" style="cursor:pointer;" onclick="location='{{ url_for('generate') }}'"><div class="kpi-label">Quick Action</div><div class="kpi-value" style="color:var(--success);">+ Generate</div></div>
+</div>
+{% endif %}
+
+<!-- Trend Sparklines + Top/Bottom -->
+{% if trends|length > 1 %}
+<div class="grid-2" style="margin-bottom:16px;">
+  <div class="card">
+    <div class="card-header">
+      <h3>Impressions & Clicks Trend</h3>
+      <a href="{{ url_for('trends_page') }}" class="btn btn-ghost btn-sm">View All &#8594;</a>
+    </div>
+    <canvas id="trendChart" height="120"></canvas>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <h3>Spend Trend</h3>
+    </div>
+    <canvas id="spendTrendChart" height="120"></canvas>
+  </div>
+</div>
+{% endif %}
+
+{% if top_campaigns %}
+<div class="grid-2" style="margin-bottom:16px;">
+  <div class="card">
+    <h3 style="margin-bottom:12px;">&#127942; Top Performers (by CTR)</h3>
+    {% for c in top_campaigns %}
+    <div style="display:flex;align-items:center;gap:12px;padding:8px 0;{% if not loop.last %}border-bottom:1px solid var(--border);{% endif %}">
+      <div class="score score-high">{{ '{:.1f}'.format(c.ctr or 0) }}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:16px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ c.display_name or c.name or 'Unknown' }}</div>
+        <div style="font-size:14px;color:var(--muted);">{{ '{:,}'.format(c.impressions or 0) }} imp &middot; {{ '{:,}'.format(c.clicks or 0) }} clicks &middot; ${{ '{:,.0f}'.format(c.cost_usd or 0) }}</div>
+      </div>
+      <span class="badge badge-success">{{ c.campaign_type or 'N/A' }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="card">
+    <h3 style="margin-bottom:12px;">&#9888; Needs Attention (lowest CTR)</h3>
+    {% for c in bottom_campaigns %}
+    <div style="display:flex;align-items:center;gap:12px;padding:8px 0;{% if not loop.last %}border-bottom:1px solid var(--border);{% endif %}">
+      <div class="score score-low">{{ '{:.1f}'.format(c.ctr or 0) }}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:16px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ c.display_name or c.name or 'Unknown' }}</div>
+        <div style="font-size:14px;color:var(--muted);">{{ '{:,}'.format(c.impressions or 0) }} imp &middot; ${{ '{:,.0f}'.format(c.cost_usd or 0) }}</div>
+      </div>
+      <span class="badge badge-danger">{{ '{:.2f}'.format(c.ctr or 0) }}% CTR</span>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Active Jobs -->
+{% set running = [] %}
+{% for jid, job in jobs.items() if job.status == 'running' %}{% if running.append((jid, job)) %}{% endif %}{% endfor %}
+{% if running %}
+<div class="card" style="border-left:3px solid var(--primary);">
+  <h3>&#9881; Active Jobs</h3>
+  {% for jid, job in running %}
+  <div style="display:flex;align-items:center;gap:16px;padding:10px 0;">
+    <div class="progress" style="flex:1;height:8px;"><div class="progress-bar" style="width:{{ job.progress }}%;"></div></div>
+    <span style="font-size:14px;color:var(--muted);min-width:140px;">{{ job.message }}</span>
+    <a href="{{ url_for('job_status_page', job_id=jid) }}" class="btn btn-outline btn-sm">View</a>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Reports Table -->
+<div class="card">
+  <div class="card-header">
+    <h3>Recent Reports</h3>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <input type="text" id="reportSearch" placeholder="Search reports..." style="padding:8px 14px;border:1px solid var(--border);border-radius:8px;font-size:14px;width:200px;background:var(--card);color:var(--text);">
+      <button class="btn btn-outline btn-sm" id="bulkActions" style="display:none;" onclick="showBulkMenu()">&#9881; Bulk</button>
+      <a href="{{ url_for('compare_page') }}" class="btn btn-outline btn-sm">&#128203; Compare</a>
+      <a href="{{ url_for('generate') }}" class="btn btn-primary btn-sm">+ Generate</a>
+    </div>
+  </div>
+  {% if reports %}
+  <div class="table-wrap">
+    <table class="table" id="reportsTable">
+      <thead>
+        <tr>
+          <th style="width:30px;"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)"></th>
+          <th>Report Name</th>
+          <th>Date</th>
+          <th>Campaigns</th>
+          <th>Impressions</th>
+          <th>Spend</th>
+          <th>CTR</th>
+          <th>Formats</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in reports %}
+        <tr id="report-row-{{ r.name }}">
+          <td><input type="checkbox" class="report-select" data-name="{{ r.name }}" onchange="updateBulk()"></td>
+          <td style="white-space:nowrap;">
+            <button class="btn btn-ghost btn-sm fav-star" data-name="{{ r.name }}" onclick="toggleFav(this)" style="font-size:14px;padding:2px 4px;">&#9734;</button>
+            <a href="{{ url_for('view_report', report_name=r.name) }}" style="color:var(--primary);text-decoration:none;font-weight:600;">{{ r.name[:40] }}</a>
+          </td>
+          <td style="color:var(--muted);">{{ r.date }}</td>
+          <td>{{ r.get('campaign_count', '-') }}</td>
+          <td>{{ '{:,}'.format(r.get('total_impressions', 0)|int) if r.get('total_impressions') else '-' }}</td>
+          <td>{{ '${:,.0f}'.format(r.get('total_spend', 0)) if r.get('total_spend') else '-' }}</td>
+          <td>
+            {% if r.get('overall_ctr') %}
+            <span style="color:{% if r.overall_ctr >= 0.56 %}var(--success){% else %}var(--danger){% endif %}">{{ '{:.2f}%'.format(r.overall_ctr) }}</span>
+            {% else %}-{% endif %}
+          </td>
+          <td>
+            {% for ext, _ in r.files.items() %}
+            <span class="badge {% if ext == '.pptx' %}badge-info{% elif ext == '.html' %}badge-success{% elif ext == '.json' %}badge-warning{% else %}badge-neutral{% endif %}">{{ ext[1:]|upper }}</span>
+            {% endfor %}
+          </td>
+          <td style="white-space:nowrap;">
+            {% if '.pptx' in r.files %}<a href="{{ url_for('download_file', filename=r.files['.pptx']) }}" class="btn btn-outline btn-sm" title="Download PPTX">&#8595;</a>{% endif %}
+            {% if '.html' in r.files %}<a href="{{ url_for('view_html_report', filename=r.files['.html']) }}" class="btn btn-outline btn-sm" target="_blank" title="View HTML">&#128065;</a>{% endif %}
+            <a href="{{ url_for('view_report', report_name=r.name) }}" class="btn btn-outline btn-sm" title="Analyze">&#128200;</a>
+            <button class="btn btn-ghost btn-sm" style="padding:5px 6px;" title="Duplicate" onclick="duplicateReport('{{ r.name }}')">&#128203;</button>
+            <button class="btn btn-ghost btn-sm" style="color:var(--danger);padding:5px 6px;" title="Delete" onclick="deleteReport('{{ r.name }}')">&#128465;</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="icon">&#128202;</div>
+    <p>No reports yet. Generate your first report to see data here.</p>
+    <a href="{{ url_for('generate') }}" class="btn btn-primary">Generate Report</a>
+  </div>
+  {% endif %}
+</div>
+
+{% if trends|length > 1 %}
+<script>
+var trendLabels = {{ trends|map(attribute='label')|list|tojson }};
+new Chart(document.getElementById('trendChart'), {
+  type: 'line',
+  data: {
+    labels: trendLabels,
+    datasets: [{
+      label: 'Impressions',
+      data: {{ trends|map(attribute='impressions')|list|tojson }},
+      borderColor: '#0A66C2', backgroundColor: 'rgba(10,102,194,0.08)',
+      fill: true, tension: 0.4, pointRadius: 3, borderWidth: 2
+    }, {
+      label: 'Clicks',
+      data: {{ trends|map(attribute='clicks')|list|tojson }},
+      borderColor: '#F5A623', backgroundColor: 'rgba(245,166,35,0.08)',
+      fill: true, tension: 0.4, pointRadius: 3, borderWidth: 2
+    }]
+  },
+  options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 13 } } } }, scales: { y: { beginAtZero: true }, x: { ticks: { font: { size: 12 } } } } }
+});
+new Chart(document.getElementById('spendTrendChart'), {
+  type: 'line',
+  data: {
+    labels: trendLabels,
+    datasets: [{
+      label: 'Spend ($)',
+      data: {{ trends|map(attribute='spend')|list|tojson }},
+      borderColor: '#057A42', backgroundColor: 'rgba(5,122,66,0.08)',
+      fill: true, tension: 0.4, pointRadius: 3, borderWidth: 2
+    }]
+  },
+  options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+});
+</script>
+{% endif %}
+
+<script>
+// Report search filter
+document.getElementById('reportSearch')?.addEventListener('input', function() {
+  var q = this.value.toLowerCase();
+  document.querySelectorAll('#reportsTable tbody tr').forEach(function(row) {
+    row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+});
+
+// Auto-refresh every 60 seconds when jobs are running
+(function autoRefresh() {
+  var hasRunning = document.querySelector('[style*="Active Jobs"]');
+  if (hasRunning) {
+    setTimeout(function() { location.reload(); }, 60000);
+  }
+})();
+
+// Favorites
+(async function loadFavs() {
+  try {
+    var r = await fetch('/api/favorites');
+    var favs = await r.json();
+    document.querySelectorAll('.fav-star').forEach(function(btn) {
+      if (favs.includes(btn.dataset.name)) {
+        btn.innerHTML = '&#9733;';
+        btn.style.color = 'var(--accent)';
+      }
+    });
+  } catch(e) {}
+})();
+async function toggleFav(btn) {
+  var name = btn.dataset.name;
+  var r = await fetch('/api/favorite/' + name, {method: 'POST'});
+  var d = await r.json();
+  if (d.favorited) {
+    btn.innerHTML = '&#9733;'; btn.style.color = 'var(--accent)';
+    showToast(name + ' starred', 'success');
+  } else {
+    btn.innerHTML = '&#9734;'; btn.style.color = '';
+    showToast('Star removed', 'info');
+  }
+}
+
+// Delete report
+async function deleteReport(name) {
+  var ok = await showConfirm('Delete Report', 'Delete all files for "' + name + '"? This cannot be undone.');
+  if (!ok) return;
+  try {
+    var r = await fetch('/api/delete-report/' + name, {method: 'POST'});
+    var d = await r.json();
+    if (d.ok) {
+      var row = document.getElementById('report-row-' + name);
+      if (row) row.remove();
+      showToast('Report deleted (' + d.deleted.join(', ') + ')', 'success');
+    } else {
+      showToast(d.message || 'Failed to delete', 'error');
+    }
+  } catch(e) {
+    showToast('Error: ' + e, 'error');
+  }
+}
+
+// Duplicate report
+async function duplicateReport(name) {
+  try {
+    var r = await fetch('/api/duplicate-report/' + name, {method: 'POST'});
+    var d = await r.json();
+    if (d.ok) {
+      showToast('Report duplicated: ' + d.new_name, 'success');
+      setTimeout(function() { location.reload(); }, 1000);
+    } else {
+      showToast(d.message || 'Failed', 'error');
+    }
+  } catch(e) { showToast('Error: ' + e, 'error'); }
+}
+
+// Bulk actions
+function toggleSelectAll(cb) {
+  document.querySelectorAll('.report-select').forEach(function(c) { c.checked = cb.checked; });
+  updateBulk();
+}
+function updateBulk() {
+  var selected = document.querySelectorAll('.report-select:checked');
+  document.getElementById('bulkActions').style.display = selected.length > 0 ? '' : 'none';
+}
+async function showBulkMenu() {
+  var selected = Array.from(document.querySelectorAll('.report-select:checked')).map(function(c) { return c.dataset.name; });
+  if (!selected.length) return;
+  var ok = await showConfirm('Bulk Actions', selected.length + ' reports selected. Choose an action:');
+  if (!ok) return;
+  // For now, offer bulk delete
+  var del = await showConfirm('Bulk Delete', 'Delete ' + selected.length + ' reports? This cannot be undone.');
+  if (!del) return;
+  var r = await fetch('/api/bulk-delete', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({names: selected})
+  });
+  var d = await r.json();
+  if (d.ok) {
+    showToast(d.reports + ' reports deleted', 'success');
+    setTimeout(function() { location.reload(); }, 1000);
+  }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+{% set report_name = report_name %}
+{% block title %}What-If Simulator - {{ report_name }}{% endblock %}
+{% block page_title %}Budget What-If Simulator{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('dashboard') }}">Dashboard</a> / <a href="{{ url_for('view_report', report_name=report_name) }}">{{ report_name[:20] }}</a> / What-If{% endblock %}
+
+{% block content %}
+<div class="alert alert-info">
+  <span>&#128300;</span>
+  <span>Adjust budget allocations below to see projected impact on performance. Projections are based on current campaign efficiency metrics.</span>
+</div>
+
+<!-- Current Summary -->
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-label">Current Total Budget</div>
+    <div class="kpi-value" id="currentBudget">${{ '{:,.2f}'.format(agg.total_spend) }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Simulated Budget</div>
+    <div class="kpi-value" id="simBudget" style="color:var(--primary);">${{ '{:,.2f}'.format(agg.total_spend) }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Projected Clicks</div>
+    <div class="kpi-value" id="projClicks">{{ '{:,}'.format(agg.total_clicks) }}</div>
+    <div class="kpi-sub" id="projClicksChange"></div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Projected Impressions</div>
+    <div class="kpi-value" id="projImps">{{ '{:,}'.format(agg.total_imp) }}</div>
+    <div class="kpi-sub" id="projImpsChange"></div>
+  </div>
+</div>
+
+<!-- Global Budget Multiplier -->
+<div class="card">
+  <div class="card-header">
+    <h3>Global Budget Adjustment</h3>
+    <span id="globalPct" style="font-size:18px;font-weight:700;color:var(--primary);">100%</span>
+  </div>
+  <input type="range" id="globalSlider" min="0" max="300" value="100" step="5"
+    style="width:100%;accent-color:var(--primary);" oninput="updateGlobal(this.value)">
+  <div style="display:flex;justify-content:space-between;font-size:14px;color:var(--muted);margin-top:4px;">
+    <span>0%</span><span>50%</span><span>100%</span><span>150%</span><span>200%</span><span>250%</span><span>300%</span>
+  </div>
+</div>
+
+<!-- Per-Campaign Sliders -->
+<div class="card">
+  <div class="card-header">
+    <h3>Per-Campaign Budget Allocation</h3>
+    <button class="btn btn-outline btn-sm" onclick="resetAll()">Reset All</button>
+  </div>
+  <div id="campaignSliders">
+    {% for c in campaigns %}
+    {% set spend = c.get('cost_usd', 0) or 0 %}
+    {% set cpc = c.get('cpc', 0) or 0 %}
+    {% set cpm = (spend / (c.get('impressions',1) or 1) * 1000) %}
+    <div class="campaign-slider" style="padding:12px 0;border-bottom:1px solid var(--border);"
+      data-spend="{{ spend }}" data-cpc="{{ cpc }}" data-cpm="{{ cpm }}"
+      data-clicks="{{ c.get('clicks', 0) or 0 }}" data-imp="{{ c.get('impressions', 0) or 0 }}">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+        <span style="font-size:16px;font-weight:600;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+          {{ c.get('display_name', c.get('name', 'Unknown')) }}
+        </span>
+        <span style="display:flex;gap:12px;font-size:14px;">
+          <span>Current: $<span class="curr-val">{{ '{:,.2f}'.format(spend) }}</span></span>
+          <span style="color:var(--primary);font-weight:600;">Sim: $<span class="sim-val">{{ '{:,.2f}'.format(spend) }}</span></span>
+          <span class="pct-change" style="font-weight:600;"></span>
+        </span>
+      </div>
+      <input type="range" class="camp-slider" min="0" max="300" value="100" step="5"
+        style="width:100%;accent-color:var(--primary);" oninput="updateCampaign(this)">
+      <div style="display:flex;justify-content:space-between;font-size:14px;color:var(--muted);margin-top:2px;">
+        <span>CPC: ${{ '{:.2f}'.format(cpc) }}</span>
+        <span>CTR: {{ '{:.2f}'.format(c.get('ctr', 0) or 0) }}%</span>
+        <span><span class="proj-clicks-camp">{{ '{:,}'.format(c.get('clicks', 0) or 0) }}</span> projected clicks</span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Projection Summary Table -->
+<div class="card">
+  <h3>Projection Summary</h3>
+  <div class="table-wrap">
+    <table class="table" id="projTable">
+      <thead>
+        <tr>
+          <th>Campaign</th>
+          <th style="text-align:right;">Current Spend</th>
+          <th style="text-align:right;">Simulated Spend</th>
+          <th style="text-align:right;">Change</th>
+          <th style="text-align:right;">Proj. Clicks</th>
+          <th style="text-align:right;">Proj. Impressions</th>
+        </tr>
+      </thead>
+      <tbody id="projBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+var campaigns = {{ campaigns|tojson }};
+var totalSpend = {{ agg.total_spend }};
+var totalClicks = {{ agg.total_clicks }};
+var totalImps = {{ agg.total_imp }};
+
+function updateGlobal(val) {
+  document.getElementById('globalPct').textContent = val + '%';
+  document.querySelectorAll('.camp-slider').forEach(function(s) {
+    s.value = val;
+    updateCampaign(s);
+  });
+  recalcTotals();
+}
+
+function updateCampaign(slider) {
+  var row = slider.closest('.campaign-slider');
+  var pct = parseInt(slider.value) / 100;
+  var origSpend = parseFloat(row.dataset.spend);
+  var newSpend = origSpend * pct;
+  var cpc = parseFloat(row.dataset.cpc);
+  var cpm = parseFloat(row.dataset.cpm);
+  var projClicks = cpc > 0 ? Math.round(newSpend / cpc) : 0;
+  var projImps = cpm > 0 ? Math.round(newSpend / cpm * 1000) : 0;
+
+  row.querySelector('.sim-val').textContent = newSpend.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+  row.querySelector('.proj-clicks-camp').textContent = projClicks.toLocaleString();
+
+  var change = pct * 100 - 100;
+  var pctEl = row.querySelector('.pct-change');
+  pctEl.textContent = (change >= 0 ? '+' : '') + change.toFixed(0) + '%';
+  pctEl.style.color = change > 0 ? 'var(--success)' : change < 0 ? 'var(--danger)' : 'var(--muted)';
+
+  recalcTotals();
+}
+
+function recalcTotals() {
+  var simTotal = 0, simClicks = 0, simImps = 0;
+  var tbody = '';
+  var sliders = document.querySelectorAll('.campaign-slider');
+  sliders.forEach(function(row, i) {
+    var pct = parseInt(row.querySelector('.camp-slider').value) / 100;
+    var origSpend = parseFloat(row.dataset.spend);
+    var cpc = parseFloat(row.dataset.cpc);
+    var cpm = parseFloat(row.dataset.cpm);
+    var newSpend = origSpend * pct;
+    var projC = cpc > 0 ? Math.round(newSpend / cpc) : 0;
+    var projI = cpm > 0 ? Math.round(newSpend / cpm * 1000) : 0;
+    simTotal += newSpend;
+    simClicks += projC;
+    simImps += projI;
+    var change = (pct - 1) * 100;
+    var name = campaigns[i] ? (campaigns[i].display_name || campaigns[i].name || 'Unknown') : 'Campaign';
+    tbody += '<tr><td style="font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + name.substring(0,30) + '</td>';
+    tbody += '<td style="text-align:right;">$' + origSpend.toLocaleString('en-US',{minimumFractionDigits:2}) + '</td>';
+    tbody += '<td style="text-align:right;">$' + newSpend.toLocaleString('en-US',{minimumFractionDigits:2}) + '</td>';
+    tbody += '<td style="text-align:right;color:' + (change>0?'var(--success)':change<0?'var(--danger)':'var(--muted)') + ';font-weight:600;">' + (change>=0?'+':'') + change.toFixed(0) + '%</td>';
+    tbody += '<td style="text-align:right;">' + projC.toLocaleString() + '</td>';
+    tbody += '<td style="text-align:right;">' + projI.toLocaleString() + '</td></tr>';
+  });
+
+  document.getElementById('simBudget').textContent = '$' + simTotal.toLocaleString('en-US',{minimumFractionDigits:2});
+  document.getElementById('projClicks').textContent = simClicks.toLocaleString();
+  document.getElementById('projImps').textContent = simImps.toLocaleString();
+
+  var clickChange = totalClicks > 0 ? ((simClicks - totalClicks) / totalClicks * 100) : 0;
+  var impChange = totalImps > 0 ? ((simImps - totalImps) / totalImps * 100) : 0;
+  document.getElementById('projClicksChange').textContent = (clickChange >= 0 ? '+' : '') + clickChange.toFixed(1) + '% vs current';
+  document.getElementById('projClicksChange').style.color = clickChange >= 0 ? 'var(--success)' : 'var(--danger)';
+  document.getElementById('projImpsChange').textContent = (impChange >= 0 ? '+' : '') + impChange.toFixed(1) + '% vs current';
+  document.getElementById('projImpsChange').style.color = impChange >= 0 ? 'var(--success)' : 'var(--danger)';
+
+  document.getElementById('projBody').innerHTML = tbody;
+}
+
+function resetAll() {
+  document.getElementById('globalSlider').value = 100;
+  document.getElementById('globalPct').textContent = '100%';
+  document.querySelectorAll('.camp-slider').forEach(function(s) { s.value = 100; updateCampaign(s); });
+}
+
+// Initial calc
+recalcTotals();
+</script>
+{% endblock %}

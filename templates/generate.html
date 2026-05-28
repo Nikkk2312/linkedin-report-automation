@@ -1,0 +1,500 @@
+{% extends "base.html" %}
+{% block title %}Generate Report - LinkedIn Report Automation{% endblock %}
+{% block page_title %}Generate Report{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('dashboard') }}">Dashboard</a> / Generate{% endblock %}
+
+{% block content %}
+<div style="max-width:820px;">
+  <div class="card">
+    <div class="card-header">
+      <h3>New Report</h3>
+      <span class="badge badge-info">Step-by-step</span>
+    </div>
+
+    <form method="POST" action="{{ url_for('generate') }}" id="generateForm">
+      <!-- Step 1: Credentials -->
+      <div style="background:var(--hover);border-radius:10px;padding:20px;margin-bottom:20px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div style="font-size:19px;font-weight:700;">1. API Credentials</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            {% if env.get('LINKEDIN_ACCESS_TOKEN') and env.get('LINKEDIN_ACCOUNT_ID') %}
+            <span class="badge badge-success">Connected</span>
+            {% else %}
+            <span class="badge badge-warning">Not configured</span>
+            {% endif %}
+            <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('apiGuide').style.display = document.getElementById('apiGuide').style.display === 'none' ? 'block' : 'none';" style="font-size:15px;">
+              &#9432; Setup Guide
+            </button>
+          </div>
+        </div>
+
+        <!-- API Setup Guide (collapsible) -->
+        <div id="apiGuide" style="display:none;margin-bottom:18px;">
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px;">
+            <h3 style="margin-bottom:14px;font-size:18px;">How to Get LinkedIn API Access</h3>
+
+            <div style="margin-bottom:16px;">
+              <div style="font-size:17px;font-weight:700;color:var(--primary);margin-bottom:6px;">Step 1: Create a LinkedIn Developer App</div>
+              <ol style="margin:0;padding-left:22px;font-size:16px;line-height:1.8;">
+                <li>Go to <a href="https://www.linkedin.com/developers/apps" target="_blank" style="color:var(--primary);font-weight:600;">LinkedIn Developer Portal</a></li>
+                <li>Click <strong>"Create App"</strong></li>
+                <li>Fill in your app name, LinkedIn Page (create one if needed), and upload a logo</li>
+                <li>Accept the terms and click <strong>"Create App"</strong></li>
+              </ol>
+            </div>
+
+            <div style="margin-bottom:16px;">
+              <div style="font-size:17px;font-weight:700;color:var(--primary);margin-bottom:6px;">Step 2: Request API Access</div>
+              <ol style="margin:0;padding-left:22px;font-size:16px;line-height:1.8;">
+                <li>In your app, go to the <strong>"Products"</strong> tab</li>
+                <li>Request access to <strong>"Advertising API"</strong> (required for campaign data)</li>
+                <li>Also add <strong>"Share on LinkedIn"</strong> and <strong>"Sign In with LinkedIn using OpenID Connect"</strong></li>
+                <li>Wait for approval (usually instant for Advertising API if you have an active ad account)</li>
+              </ol>
+            </div>
+
+            <div style="margin-bottom:16px;">
+              <div style="font-size:17px;font-weight:700;color:var(--primary);margin-bottom:6px;">Step 3: Generate an Access Token</div>
+              <ol style="margin:0;padding-left:22px;font-size:16px;line-height:1.8;">
+                <li>Go to the <strong>"Auth"</strong> tab in your LinkedIn app</li>
+                <li>Note your <strong>Client ID</strong> and <strong>Client Secret</strong></li>
+                <li>Use the LinkedIn Token Generator to create your access token:</li>
+              </ol>
+              <div style="margin:12px 0;padding:14px 18px;background:var(--primary-light);border-radius:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                <a href="https://www.linkedin.com/developers/tools/oauth/token-generator" target="_blank" class="btn btn-primary btn-sm">
+                  Open LinkedIn Token Generator
+                </a>
+                <span style="font-size:15px;color:var(--muted);">Select the <strong>r_ads</strong>, <strong>r_ads_reporting</strong>, and <strong>r_organization_social</strong> scopes</span>
+              </div>
+              <div style="margin-top:8px;padding:12px 16px;background:var(--warning-bg);border-radius:8px;font-size:15px;color:var(--warning);border:1px solid rgba(217,119,6,0.2);">
+                <strong>Important:</strong> LinkedIn access tokens expire after <strong>60 days</strong>. You can set up a refresh token in Settings for automatic renewal. The token generated from the Token Generator tool is valid for 60 days.
+              </div>
+            </div>
+
+            <div style="margin-bottom:16px;">
+              <div style="font-size:17px;font-weight:700;color:var(--primary);margin-bottom:6px;">Step 4: Find Your Ad Account ID</div>
+              <ol style="margin:0;padding-left:22px;font-size:16px;line-height:1.8;">
+                <li>Go to <a href="https://www.linkedin.com/campaignmanager" target="_blank" style="color:var(--primary);font-weight:600;">LinkedIn Campaign Manager</a></li>
+                <li>Select your ad account</li>
+                <li>The Account ID is the <strong>number in the URL</strong> after <code>/accounts/</code></li>
+                <li>Example: <code>linkedin.com/campaignmanager/accounts/<strong>123456789</strong>/</code></li>
+              </ol>
+            </div>
+
+            <div style="padding:14px 18px;background:var(--success-bg);border-radius:8px;border:1px solid rgba(5,122,66,0.15);">
+              <div style="font-size:16px;font-weight:700;color:var(--success);margin-bottom:6px;">Required OAuth Scopes</div>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                <span class="badge badge-info">r_ads</span>
+                <span class="badge badge-info">r_ads_reporting</span>
+                <span class="badge badge-info">r_organization_social</span>
+                <span class="badge badge-neutral">r_liteprofile (optional)</span>
+                <span class="badge badge-neutral">rw_ads (optional, for management)</span>
+              </div>
+              <div style="font-size:15px;color:var(--muted);margin-top:8px;">
+                <strong>r_ads</strong> and <strong>r_ads_reporting</strong> are required. Others are optional for extended features.
+              </div>
+            </div>
+
+            <div style="margin-top:14px;padding:14px 18px;background:var(--hover);border-radius:8px;">
+              <div style="font-size:16px;font-weight:700;margin-bottom:6px;">Helpful Links</div>
+              <div style="display:flex;flex-direction:column;gap:6px;font-size:15px;">
+                <a href="https://www.linkedin.com/developers/apps" target="_blank" style="color:var(--primary);">&#128279; LinkedIn Developer Portal</a>
+                <a href="https://www.linkedin.com/developers/tools/oauth/token-generator" target="_blank" style="color:var(--primary);">&#128279; OAuth Token Generator</a>
+                <a href="https://www.linkedin.com/campaignmanager" target="_blank" style="color:var(--primary);">&#128279; LinkedIn Campaign Manager</a>
+                <a href="https://learn.microsoft.com/en-us/linkedin/marketing/getting-started" target="_blank" style="color:var(--primary);">&#128279; Marketing API Documentation</a>
+                <a href="https://learn.microsoft.com/en-us/linkedin/shared/authentication/authorization-code-flow" target="_blank" style="color:var(--primary);">&#128279; OAuth 2.0 Authorization Code Flow Guide</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="credSection" style="{% if env.get('LINKEDIN_ACCESS_TOKEN') and env.get('LINKEDIN_ACCOUNT_ID') %}display:none;{% endif %}">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Access Token <span class="required">*</span></label>
+              <input type="password" name="token" id="tokenInput" value="{{ env.get('LINKEDIN_ACCESS_TOKEN', '') }}" placeholder="AQX..." required>
+              <div class="hint">From LinkedIn Token Generator or .env file</div>
+            </div>
+            <div class="form-group">
+              <label>Ad Account ID <span class="required">*</span></label>
+              <input type="text" name="account_id" id="accountInput" value="{{ env.get('LINKEDIN_ACCOUNT_ID', '') }}" placeholder="123456789" required>
+              <div class="hint">Number from Campaign Manager URL</div>
+            </div>
+          </div>
+          <button type="button" class="btn btn-outline btn-sm" id="testConnBtn" onclick="testConnection()">
+            &#128268; Test Connection
+          </button>
+          <span id="testResult" style="font-size:15px;margin-left:10px;"></span>
+        </div>
+        {% if env.get('LINKEDIN_ACCESS_TOKEN') and env.get('LINKEDIN_ACCOUNT_ID') %}
+        <div id="credSummary" style="display:flex;align-items:center;gap:12px;">
+          <span style="font-size:16px;color:var(--muted);">Account ID: <strong>{{ env.get('LINKEDIN_ACCOUNT_ID', '')[:8] }}...</strong></span>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('credSection').style.display='block';document.getElementById('credSummary').style.display='none';">Edit</button>
+          <input type="hidden" name="token" value="{{ env.get('LINKEDIN_ACCESS_TOKEN', '') }}">
+          <input type="hidden" name="account_id" value="{{ env.get('LINKEDIN_ACCOUNT_ID', '') }}">
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Step 2: Date Range -->
+      <div style="background:var(--hover);border-radius:10px;padding:20px;margin-bottom:20px;">
+        <div style="font-size:19px;font-weight:700;margin-bottom:14px;">2. Date Range</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
+          <button type="button" class="btn btn-outline btn-sm date-preset active" data-range="last_30">Last 30 Days</button>
+          <button type="button" class="btn btn-outline btn-sm date-preset" data-range="last_7">Last 7 Days</button>
+          <button type="button" class="btn btn-outline btn-sm date-preset" data-range="last_90">Last 90 Days</button>
+          <button type="button" class="btn btn-outline btn-sm date-preset" data-range="this_month">This Month</button>
+          <button type="button" class="btn btn-outline btn-sm date-preset" data-range="last_month">Last Month</button>
+          <button type="button" class="btn btn-outline btn-sm date-preset" data-range="this_quarter">This Quarter</button>
+          <button type="button" class="btn btn-outline btn-sm date-preset" data-range="all_time">All Time</button>
+          <button type="button" class="btn btn-outline btn-sm date-preset" data-range="custom">Custom Range</button>
+        </div>
+        <input type="hidden" name="date_range" id="dateRange" value="last_30">
+        <div id="customDates" style="display:none;">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Start Date</label>
+              <input type="date" name="start_date" id="startDate">
+            </div>
+            <div class="form-group">
+              <label>End Date</label>
+              <input type="date" name="end_date" id="endDate">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3: Campaign Selection -->
+      <div style="background:var(--hover);border-radius:10px;padding:20px;margin-bottom:20px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+          <div style="font-size:19px;font-weight:700;">3. Select Campaigns</div>
+          <span id="campaignCount" class="badge badge-neutral" style="display:none;"></span>
+        </div>
+
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;">
+          <button type="button" class="btn btn-outline btn-sm" id="fetchCampsBtn" onclick="fetchCampaigns()">
+            &#128260; Load Campaigns from LinkedIn
+          </button>
+          <span id="fetchStatus" style="font-size:15px;color:var(--muted);"></span>
+        </div>
+
+        <div id="campaignListWrap" style="display:none;">
+          <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;">
+            <input type="text" id="campSearch" placeholder="Search campaigns..." style="padding:8px 14px;border:1px solid var(--border);border-radius:8px;font-size:15px;width:240px;background:var(--card);color:var(--text);min-height:40px;">
+            <button type="button" class="btn btn-ghost btn-sm" onclick="toggleAllCamps(true)">Select All</button>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="toggleAllCamps(false)">Deselect All</button>
+          </div>
+          <div id="campaignList" style="max-height:320px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;background:var(--card);"></div>
+          <div style="margin-top:8px;font-size:15px;color:var(--muted);">
+            <span id="selectedCount">0</span> campaigns selected
+          </div>
+        </div>
+
+        <div id="noCampaignsHint" style="font-size:15px;color:var(--muted);margin-top:4px;">
+          Click "Load Campaigns" to fetch your LinkedIn campaigns and select which ones to include in the report.
+        </div>
+
+        <!-- Hidden fields for form submission -->
+        <input type="hidden" name="campaigns" value="custom">
+        <input type="hidden" name="selected_campaign_ids" id="selectedCampaignIds" value="">
+      </div>
+
+      <!-- Step 4: Report Options -->
+      <div style="background:var(--hover);border-radius:10px;padding:20px;margin-bottom:20px;">
+        <div style="font-size:19px;font-weight:700;margin-bottom:14px;">4. Report Options</div>
+
+        <div class="form-group">
+          <label>Report Title <span class="hint" style="display:inline;font-weight:400;">(optional - auto-generated if blank)</span></label>
+          <input type="text" name="report_title" placeholder="e.g., Q2 2026 LinkedIn Campaign Report">
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+          <label class="checkbox-label">
+            <input type="checkbox" checked disabled> PPTX Report (always)
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" name="generate_html" checked> HTML Report
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" name="include_ai" checked> AI-Powered Insights
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" name="include_demographics" checked> Demographics Analysis
+          </label>
+        </div>
+
+        <div class="form-group">
+          <label>Data Granularity</label>
+          <select name="granularity">
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly" selected>Monthly (Recommended)</option>
+            <option value="quarterly">Quarterly</option>
+            <option value="all_time">All Time (Single Period)</option>
+          </select>
+          <div class="hint">How data is grouped in trend charts. Monthly works best for most reports.</div>
+        </div>
+      </div>
+
+      <!-- Step 5: Delivery (collapsible) -->
+      <details style="margin-bottom:20px;">
+        <summary style="font-size:19px;font-weight:700;cursor:pointer;padding:14px 0;color:var(--text);">5. Email Delivery (optional)</summary>
+        <div style="background:var(--hover);border-radius:10px;padding:20px;margin-top:8px;">
+          <div class="form-group">
+            <label>Email Recipients</label>
+            <input type="text" name="email_recipients" value="{{ env.get('REPORT_RECIPIENTS', '') }}" placeholder="team@company.com, boss@company.com">
+            <div class="hint">Comma-separated email addresses. Report will be attached as PPTX.</div>
+          </div>
+        </div>
+      </details>
+
+      <!-- Actions -->
+      <div style="display:flex;gap:12px;margin-top:24px;align-items:center;">
+        <button type="submit" class="btn btn-primary btn-lg" id="generateBtn">
+          Generate Report
+        </button>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-outline">Cancel</a>
+      </div>
+    </form>
+  </div>
+
+  <!-- Report Contents Preview -->
+  <div class="card">
+    <h3 style="margin-bottom:14px;">What's Included</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      {% set features = [
+        ('Executive Summary with KPIs', true), ('Cost & Budget Analysis', true),
+        ('CTR vs 2026 Benchmarks', true), ('Engagement Breakdown', true),
+        ('Monthly Trend Charts', true), ('Creative Performance Rankings', true),
+        ('11 Demographic Pivots', true), ('AI-Powered Insights', true),
+        ('Per-Campaign Deep Dives', true), ('Viral Performance Analysis', true),
+        ('A/B Test Analysis', true), ('Audience Targeting Recs', true),
+      ] %}
+      {% for name, enabled in features %}
+      <div style="display:flex;align-items:center;gap:8px;font-size:16px;color:{% if enabled %}var(--success){% else %}var(--muted){% endif %};padding:4px 0;">
+        {% if enabled %}&#10003;{% else %}&#10007;{% endif %} {{ name }}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── Date Range Presets ──────────────────────────────────────────
+document.querySelectorAll('.date-preset').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.date-preset').forEach(function(b) {
+      b.classList.remove('active');
+      b.style.background = '';
+      b.style.color = '';
+    });
+    this.classList.add('active');
+    this.style.background = 'var(--primary)';
+    this.style.color = '#fff';
+    var range = this.dataset.range;
+    document.getElementById('dateRange').value = range;
+    document.getElementById('customDates').style.display = range === 'custom' ? 'block' : 'none';
+  });
+});
+(function() {
+  var active = document.querySelector('.date-preset.active');
+  if (active) { active.style.background = 'var(--primary)'; active.style.color = '#fff'; }
+})();
+
+// ─── Campaign Picker Hint Toggle ─────────────────────────────────
+// (No dropdown needed - campaign picker is always visible)
+
+// ─── Test Connection ─────────────────────────────────────────────
+function testConnection() {
+  var token = document.getElementById('tokenInput').value.trim();
+  var account = document.getElementById('accountInput').value.trim();
+  var result = document.getElementById('testResult');
+  var btn = document.getElementById('testConnBtn');
+  if (!token || !account) {
+    result.innerHTML = '<span style="color:var(--danger);">Enter token and account ID first</span>';
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = 'Testing...';
+  result.innerHTML = '<span style="color:var(--muted);">Connecting...</span>';
+
+  fetch('/api/test-linkedin?token=' + encodeURIComponent(token) + '&account=' + encodeURIComponent(account))
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.ok) {
+        result.innerHTML = '<span style="color:var(--success);font-weight:600;">&#10003; ' + d.message + '</span>';
+      } else {
+        result.innerHTML = '<span style="color:var(--danger);">&#10007; ' + d.message + '</span>';
+      }
+      btn.disabled = false;
+      btn.innerHTML = '&#128268; Test Connection';
+    })
+    .catch(function() {
+      result.innerHTML = '<span style="color:var(--danger);">Connection failed</span>';
+      btn.disabled = false;
+      btn.innerHTML = '&#128268; Test Connection';
+    });
+}
+
+// ─── Fetch Campaigns from LinkedIn ───────────────────────────────
+var _campaigns = [];
+
+function getCredentials() {
+  // Try visible inputs first, then hidden ones
+  var token = (document.getElementById('tokenInput') || {}).value || '';
+  var account = (document.getElementById('accountInput') || {}).value || '';
+  if (!token) {
+    var hiddenToken = document.querySelector('input[name="token"][type="hidden"]');
+    if (hiddenToken) token = hiddenToken.value;
+  }
+  if (!account) {
+    var hiddenAccount = document.querySelector('input[name="account_id"][type="hidden"]');
+    if (hiddenAccount) account = hiddenAccount.value;
+  }
+  return { token: token.trim(), account: account.trim() };
+}
+
+function fetchCampaigns() {
+  var creds = getCredentials();
+  var status = document.getElementById('fetchStatus');
+  var btn = document.getElementById('fetchCampsBtn');
+
+  if (!creds.token || !creds.account) {
+    status.innerHTML = '<span style="color:var(--danger);">Configure credentials first (Step 1)</span>';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Loading...';
+  status.innerHTML = '<span class="spinner" style="font-size:14px;">&#9881;</span> Fetching from LinkedIn...';
+
+  fetch('/api/list-campaigns?token=' + encodeURIComponent(creds.token) + '&account=' + encodeURIComponent(creds.account))
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      btn.disabled = false;
+      btn.innerHTML = '&#128260; Refresh Campaigns';
+      if (!d.ok) {
+        status.innerHTML = '<span style="color:var(--danger);">&#10007; ' + d.message + '</span>';
+        return;
+      }
+      _campaigns = d.campaigns;
+      status.innerHTML = '<span style="color:var(--success);">&#10003; Found ' + d.count + ' campaigns</span>';
+      document.getElementById('campaignCount').textContent = d.count + ' found';
+      document.getElementById('campaignCount').style.display = 'inline';
+      document.getElementById('noCampaignsHint').style.display = 'none';
+      renderCampaignList();
+      document.getElementById('campaignListWrap').style.display = 'block';
+    })
+    .catch(function(e) {
+      btn.disabled = false;
+      btn.innerHTML = '&#128260; Load Campaigns from LinkedIn';
+      status.innerHTML = '<span style="color:var(--danger);">Failed to fetch campaigns</span>';
+    });
+}
+
+function renderCampaignList(filter) {
+  var container = document.getElementById('campaignList');
+  var html = '';
+  var filtered = _campaigns;
+  if (filter) {
+    var q = filter.toLowerCase();
+    filtered = _campaigns.filter(function(c) {
+      return c.name.toLowerCase().includes(q) || c.id.includes(q);
+    });
+  }
+  if (!filtered.length) {
+    container.innerHTML = '<div style="padding:16px;color:var(--muted);text-align:center;">No campaigns match your search</div>';
+    return;
+  }
+  filtered.forEach(function(c) {
+    var statusColor = c.status === 'ACTIVE' ? 'var(--success)' : (c.status === 'PAUSED' ? 'var(--warning)' : 'var(--muted)');
+    var statusBadge = c.status === 'ACTIVE' ? 'badge-success' : (c.status === 'PAUSED' ? 'badge-warning' : 'badge-neutral');
+    var checked = c._selected ? ' checked' : '';
+    html += '<label style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.08s;" onmouseover="this.style.background=\'var(--hover)\'" onmouseout="this.style.background=\'\'">';
+    html += '<input type="checkbox" class="camp-cb" data-id="' + c.id + '" style="min-width:20px;min-height:20px;"' + checked + ' onchange="updateSelectedCamps()">';
+    html += '<div style="flex:1;min-width:0;">';
+    html += '<div style="font-size:16px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escHtml(c.name) + '</div>';
+    html += '<div style="font-size:14px;color:var(--muted);margin-top:2px;">ID: ' + c.id;
+    if (c.objective) html += ' &middot; ' + c.objective.replace(/_/g, ' ');
+    if (c.type) html += ' &middot; ' + c.type;
+    html += '</div>';
+    html += '</div>';
+    html += '<span class="badge ' + statusBadge + '">' + c.status + '</span>';
+    html += '</label>';
+  });
+  container.innerHTML = html;
+  updateSelectedCamps();
+}
+
+function escHtml(s) {
+  var d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function toggleAllCamps(select) {
+  document.querySelectorAll('.camp-cb').forEach(function(cb) { cb.checked = select; });
+  updateSelectedCamps();
+}
+
+function updateSelectedCamps() {
+  var ids = [];
+  document.querySelectorAll('.camp-cb:checked').forEach(function(cb) {
+    ids.push(cb.dataset.id);
+  });
+  document.getElementById('selectedCampaignIds').value = ids.join(',');
+  document.getElementById('selectedCount').textContent = ids.length;
+}
+
+// Campaign search filter
+document.getElementById('campSearch')?.addEventListener('input', function() {
+  renderCampaignList(this.value);
+});
+
+// ─── Form Submission ─────────────────────────────────────────────
+document.getElementById('generateForm').addEventListener('submit', function(e) {
+  var ids = document.getElementById('selectedCampaignIds').value;
+  if (!ids) {
+    e.preventDefault();
+    showToast('Please load and select at least one campaign', 'warning');
+    return;
+  }
+
+  var btn = document.getElementById('generateBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner" style="font-size:16px;">&#9881;</span> Generating...';
+});
+
+// ─── Auto-save Form Drafts ───────────────────────────────────────
+(function() {
+  var form = document.getElementById('generateForm');
+  if (!form) return;
+  var key = 'generate_form_draft';
+
+  try {
+    var saved = JSON.parse(localStorage.getItem(key) || '{}');
+    Object.keys(saved).forEach(function(name) {
+      var el = form.querySelector('[name="' + name + '"]');
+      if (el && el.type !== 'password' && el.type !== 'hidden') {
+        if (el.type === 'checkbox') el.checked = saved[name];
+        else el.value = saved[name];
+      }
+    });
+    // Campaign picker is always visible, no dropdown to trigger
+  } catch(e) {}
+
+  form.addEventListener('input', function() {
+    var data = {};
+    new FormData(form).forEach(function(v, k) { data[k] = v; });
+    form.querySelectorAll('input[type=checkbox]').forEach(function(cb) {
+      data[cb.name] = cb.checked;
+    });
+    localStorage.setItem(key, JSON.stringify(data));
+  });
+
+  form.addEventListener('submit', function() {
+    localStorage.removeItem(key);
+  });
+})();
+</script>
+{% endblock %}

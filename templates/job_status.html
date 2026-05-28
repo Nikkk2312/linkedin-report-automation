@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Generating Report{% endblock %}
+{% block page_title %}Report Generation{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('dashboard') }}">Dashboard</a> / <a href="{{ url_for('generate') }}">Generate</a> / Status{% endblock %}
+
+{% block extra_head %}
+<script>
+function pollStatus() {
+  fetch('{{ url_for("job_status_api", job_id=job_id) }}')
+    .then(r => r.json())
+    .then(data => {
+      document.getElementById('progress-bar').style.width = data.progress + '%';
+      document.getElementById('progress-text').textContent = data.progress + '%';
+      document.getElementById('status-message').textContent = data.message;
+
+      if (data.status === 'done') {
+        document.getElementById('status-icon').innerHTML = '<div style="font-size:56px;color:var(--success);">&#10004;</div>';
+        document.getElementById('status-message').style.color = 'var(--success)';
+        document.getElementById('running-section').style.display = 'none';
+        document.getElementById('done-section').style.display = 'block';
+        let links = '';
+        if (data.output_pptx) links += '<a href="{{ url_for("download_file", filename="__PLACEHOLDER__") }}'.replace('__PLACEHOLDER__', data.output_pptx) + '" class="btn btn-primary">&#8595; Download PPTX</a> ';
+        if (data.output_html) links += '<a href="{{ url_for("view_html_report", filename="__PLACEHOLDER__") }}'.replace('__PLACEHOLDER__', data.output_html) + '" class="btn btn-success" target="_blank">&#128065; View HTML</a> ';
+        if (data.report_name) links += '<a href="{{ url_for("view_report", report_name="__PLACEHOLDER__") }}'.replace('__PLACEHOLDER__', data.report_name) + '" class="btn btn-outline">&#128200; Analyze</a>';
+        document.getElementById('download-links').innerHTML = links;
+        return;
+      }
+      if (data.status === 'error') {
+        document.getElementById('status-icon').innerHTML = '<div style="font-size:56px;color:var(--danger);">&#10007;</div>';
+        document.getElementById('status-message').style.color = 'var(--danger)';
+        document.getElementById('running-section').style.display = 'none';
+        document.getElementById('error-section').style.display = 'block';
+        return;
+      }
+      setTimeout(pollStatus, 1500);
+    })
+    .catch(() => setTimeout(pollStatus, 3000));
+}
+document.addEventListener('DOMContentLoaded', function() {
+  {% if job.status == 'running' %}pollStatus();{% endif %}
+});
+</script>
+{% endblock %}
+
+{% block content %}
+<div style="max-width:550px;margin:40px auto;text-align:center;">
+  <div class="card" style="padding:40px;">
+    <div id="status-icon">
+      {% if job.status == 'done' %}<div style="font-size:56px;color:var(--success);">&#10004;</div>
+      {% elif job.status == 'error' %}<div style="font-size:56px;color:var(--danger);">&#10007;</div>
+      {% else %}<div style="font-size:40px;" class="spinner">&#9881;</div>{% endif %}
+    </div>
+
+    <h3 style="margin:14px 0 6px;font-size:18px;">
+      {% if job.status == 'done' %}Report Ready!
+      {% elif job.status == 'error' %}Generation Failed
+      {% else %}Generating Report...{% endif %}
+    </h3>
+
+    <p id="status-message" style="color:var(--muted);margin-bottom:20px;font-size:16px;
+      {% if job.status == 'done' %}color:var(--success);{% endif %}
+      {% if job.status == 'error' %}color:var(--danger);{% endif %}">{{ job.message }}</p>
+
+    <div id="running-section" {% if job.status != 'running' %}style="display:none;"{% endif %}>
+      <div class="progress" style="margin-bottom:6px;height:8px;">
+        <div id="progress-bar" class="progress-bar" style="width:{{ job.progress }}%;"></div>
+      </div>
+      <div id="progress-text" style="font-size:14px;color:var(--muted);">{{ job.progress }}%</div>
+    </div>
+
+    <div id="done-section" {% if job.status != 'done' %}style="display:none;"{% endif %}>
+      <div id="download-links" style="margin:16px 0;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+        {% if job.output_pptx %}<a href="{{ url_for('download_file', filename=job.output_pptx) }}" class="btn btn-primary">&#8595; Download PPTX</a>{% endif %}
+        {% if job.output_html %}<a href="{{ url_for('view_html_report', filename=job.output_html) }}" class="btn btn-success" target="_blank">&#128065; View HTML</a>{% endif %}
+      </div>
+      <a href="{{ url_for('dashboard') }}" class="btn btn-outline btn-sm">Back to Dashboard</a>
+    </div>
+
+    <div id="error-section" {% if job.status != 'error' %}style="display:none;"{% endif %}>
+      <div style="margin-top:16px;display:flex;gap:8px;justify-content:center;">
+        <a href="{{ url_for('generate') }}" class="btn btn-primary">Try Again</a>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-outline">Dashboard</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

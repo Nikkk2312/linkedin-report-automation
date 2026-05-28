@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}{{ report_name }} - Shared Report{% endblock %}
+{% block page_title %}Shared Report: {{ report_name[:35] }}{% endblock %}
+{% block breadcrumb %}Shared Report{% endblock %}
+
+{% block content %}
+<div class="alert alert-info">
+  <span>&#128279;</span>
+  <span>This is a shared read-only view of the report. Generated on {{ report_date }}.</span>
+</div>
+
+<!-- KPIs -->
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-label">Impressions</div>
+    <div class="kpi-value">{{ '{:,}'.format(agg.total_imp) }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Clicks</div>
+    <div class="kpi-value">{{ '{:,}'.format(agg.total_clicks) }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">CTR</div>
+    <div class="kpi-value" style="color:{% if agg.overall_ctr >= 0.56 %}var(--success){% else %}var(--danger){% endif %}">{{ '{:.2f}'.format(agg.overall_ctr) }}%</div>
+    <div class="kpi-sub">Benchmark: 0.56%</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Total Spend</div>
+    <div class="kpi-value">${{ '{:,.2f}'.format(agg.total_spend) }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Avg CPC</div>
+    <div class="kpi-value" style="color:{% if agg.overall_cpc <= 5.58 %}var(--success){% else %}var(--danger){% endif %}">${{ '{:.2f}'.format(agg.overall_cpc) }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Engagements</div>
+    <div class="kpi-value">{{ '{:,}'.format(agg.total_eng) }}</div>
+    <div class="kpi-sub">{{ '{:.2f}'.format(agg.eng_rate) }}% rate</div>
+  </div>
+</div>
+
+<!-- Charts -->
+<div class="grid-2">
+  <div class="card">
+    <h3>Impressions by Campaign</h3>
+    <canvas id="impChart" height="280"></canvas>
+  </div>
+  <div class="card">
+    <h3>CTR vs Benchmark</h3>
+    <canvas id="ctrChart" height="280"></canvas>
+  </div>
+</div>
+
+<!-- Campaign Table -->
+<div class="card">
+  <div class="card-header">
+    <h3>Campaigns ({{ campaigns|length }})</h3>
+  </div>
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Campaign</th>
+          <th>Type</th>
+          <th>Status</th>
+          <th style="text-align:right;">Impressions</th>
+          <th style="text-align:right;">Clicks</th>
+          <th style="text-align:right;">CTR</th>
+          <th style="text-align:right;">CPC</th>
+          <th style="text-align:right;">Spend</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in campaigns %}
+        <tr>
+          <td style="font-weight:600;">{{ c.get('display_name', c.get('name', 'Unknown'))[:30] }}</td>
+          <td><span class="badge badge-info">{{ c.get('campaign_type', 'N/A') }}</span></td>
+          <td><span class="badge {% if c.get('status') == 'ACTIVE' %}badge-success{% else %}badge-neutral{% endif %}">{{ c.get('status', 'N/A') }}</span></td>
+          <td style="text-align:right;">{{ '{:,}'.format(c.get('impressions', 0) or 0) }}</td>
+          <td style="text-align:right;">{{ '{:,}'.format(c.get('clicks', 0) or 0) }}</td>
+          <td style="text-align:right;">{{ '{:.2f}'.format(c.get('ctr', 0) or 0) }}%</td>
+          <td style="text-align:right;">${{ '{:.2f}'.format(c.get('cpc', 0) or 0) }}</td>
+          <td style="text-align:right;">${{ '{:,.2f}'.format(c.get('cost_usd', 0) or 0) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+var chartColors = ['#0A66C2','#004B87','#F5A623','#057A42','#CC1C39','#8B5CF6','#06B6D4','#F97316','#10B981','#EF4444'];
+var names = {{ campaigns|map(attribute='display_name')|list|tojson }};
+var shortNames = names.map(function(n) { return n ? n.substring(0, 20) : 'Unknown'; });
+
+new Chart(document.getElementById('impChart'), {
+  type: 'bar',
+  data: { labels: shortNames, datasets: [{ label: 'Impressions', data: {{ campaigns|map(attribute='impressions')|list|tojson }}, backgroundColor: chartColors }] },
+  options: { responsive: true, indexAxis: 'y', plugins: { legend: { display: false } } }
+});
+
+new Chart(document.getElementById('ctrChart'), {
+  type: 'bar',
+  data: { labels: shortNames, datasets: [
+    { label: 'CTR (%)', data: {{ campaigns|map(attribute='ctr')|list|tojson }}, backgroundColor: '#057A42' },
+    { label: 'Benchmark', data: Array(shortNames.length).fill(0.56), type: 'line', borderColor: '#CC1C39', borderDash: [5,5], pointRadius: 0, fill: false }
+  ] },
+  options: { responsive: true, indexAxis: 'y', plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 13 } } } } }
+});
+</script>
+{% endblock %}

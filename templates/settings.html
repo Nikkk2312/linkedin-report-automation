@@ -1,0 +1,410 @@
+{% extends "base.html" %}
+{% block title %}Settings - LinkedIn Report Automation{% endblock %}
+{% block page_title %}Settings{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('dashboard') }}">Dashboard</a> / Settings{% endblock %}
+
+{% block content %}
+<div style="max-width:720px;">
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" data-tab="tab-linkedin">LinkedIn API</button>
+    <button class="tab" data-tab="tab-ai">AI Insights</button>
+    <button class="tab" data-tab="tab-email">Email & Slack</button>
+    <button class="tab" data-tab="tab-branding">Branding</button>
+  </div>
+
+  <form method="POST" action="{{ url_for('settings') }}">
+
+    <!-- LinkedIn API -->
+    <div class="tab-content active" id="tab-linkedin">
+      <div class="card">
+        <div class="card-header">
+          <h3>LinkedIn API Credentials</h3>
+          <a href="https://www.linkedin.com/developers/apps" target="_blank" class="btn btn-ghost btn-sm">Developer Portal &#8599;</a>
+        </div>
+        <div class="form-group">
+          <label>Access Token <span class="required">*</span></label>
+          <input type="password" name="LINKEDIN_ACCESS_TOKEN" value="{{ env.get('LINKEDIN_ACCESS_TOKEN', '') }}" placeholder="AQX...">
+        </div>
+        <div class="form-group">
+          <label>Ad Account ID <span class="required">*</span></label>
+          <input type="text" name="LINKEDIN_ACCOUNT_ID" value="{{ env.get('LINKEDIN_ACCOUNT_ID', '') }}" placeholder="123456789">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Client ID <span class="hint" style="display:inline;">(optional)</span></label>
+            <input type="text" name="LINKEDIN_CLIENT_ID" value="{{ env.get('LINKEDIN_CLIENT_ID', '') }}">
+          </div>
+          <div class="form-group">
+            <label>Client Secret <span class="hint" style="display:inline;">(for token refresh)</span></label>
+            <input type="password" name="LINKEDIN_CLIENT_SECRET" value="{{ env.get('LINKEDIN_CLIENT_SECRET', '') }}">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Refresh Token <span class="hint" style="display:inline;">(for auto-refresh)</span></label>
+          <input type="password" name="LINKEDIN_REFRESH_TOKEN" value="{{ env.get('LINKEDIN_REFRESH_TOKEN', '') }}">
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <button type="button" class="btn btn-outline btn-sm" onclick="testLinkedIn()">Test Connection</button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="refreshToken()">&#128260; Refresh Token</button>
+          <span id="linkedinStatus" style="font-size:14px;"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Settings -->
+    <div class="tab-content" id="tab-ai">
+      <div class="card">
+        <div class="card-header">
+          <h3>AI Provider</h3>
+          <div>
+            {% if ollama_ok %}
+            <span class="badge badge-success">Ollama Connected</span>
+            {% else %}
+            <span class="badge badge-warning">Ollama Offline</span>
+            {% endif %}
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Provider</label>
+          <select name="AI_PROVIDER" onchange="toggleAI(this.value)">
+            <option value="ollama" {% if env.get('OLLAMA_ENABLED','true') == 'true' %}selected{% endif %}>Ollama (Free, Local, Private)</option>
+            <option value="anthropic" {% if env.get('OLLAMA_ENABLED') == 'false' and env.get('ANTHROPIC_API_KEY') %}selected{% endif %}>Claude API (Best Quality)</option>
+            <option value="openai" {% if env.get('OLLAMA_ENABLED') == 'false' and env.get('OPENAI_API_KEY') and not env.get('ANTHROPIC_API_KEY') %}selected{% endif %}>OpenAI API</option>
+            <option value="none" {% if env.get('AI_INSIGHTS_ENABLED') == 'false' %}selected{% endif %}>Disabled</option>
+          </select>
+        </div>
+        <div id="ollamaFields">
+          <div class="form-group">
+            <label>Ollama Model</label>
+            <input type="text" name="OLLAMA_MODEL" value="{{ env.get('OLLAMA_MODEL', 'llama3.1') }}">
+            <div class="hint">Popular: llama3.1, mistral, gemma2</div>
+          </div>
+          <div class="form-group">
+            <label>Ollama URL</label>
+            <input type="text" name="OLLAMA_BASE_URL" value="{{ env.get('OLLAMA_BASE_URL', 'http://localhost:11434') }}">
+          </div>
+          <button type="button" class="btn btn-outline btn-sm" onclick="testOllama()">Test Ollama</button>
+          <span id="ollamaStatus" style="font-size:14px;margin-left:8px;"></span>
+        </div>
+        <div id="anthropicFields" style="display:none;">
+          <div class="form-group">
+            <label>Anthropic API Key</label>
+            <input type="password" name="ANTHROPIC_API_KEY" value="{{ env.get('ANTHROPIC_API_KEY', '') }}" placeholder="sk-ant-...">
+          </div>
+        </div>
+        <div id="openaiFields" style="display:none;">
+          <div class="form-group">
+            <label>OpenAI API Key</label>
+            <input type="password" name="OPENAI_API_KEY" value="{{ env.get('OPENAI_API_KEY', '') }}" placeholder="sk-...">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Email & Slack -->
+    <div class="tab-content" id="tab-email">
+      <div class="card">
+        <h3>Email Delivery</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label>SMTP Host</label>
+            <input type="text" name="EMAIL_SMTP_HOST" value="{{ env.get('EMAIL_SMTP_HOST', 'smtp.gmail.com') }}">
+          </div>
+          <div class="form-group">
+            <label>SMTP Port</label>
+            <input type="text" name="EMAIL_SMTP_PORT" value="{{ env.get('EMAIL_SMTP_PORT', '587') }}">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Sender Email</label>
+            <input type="email" name="EMAIL_SENDER" value="{{ env.get('EMAIL_SENDER', '') }}">
+          </div>
+          <div class="form-group">
+            <label>App Password</label>
+            <input type="password" name="EMAIL_PASSWORD" value="{{ env.get('EMAIL_PASSWORD', '') }}">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Default Recipients <span class="hint" style="display:inline;">(comma-separated)</span></label>
+          <input type="text" name="REPORT_RECIPIENTS" value="{{ env.get('REPORT_RECIPIENTS', '') }}" placeholder="team@company.com, boss@company.com">
+        </div>
+      </div>
+      <div class="card">
+        <h3>Slack Integration</h3>
+        <div class="form-group">
+          <label>Webhook URL</label>
+          <input type="text" name="SLACK_WEBHOOK_URL" value="{{ env.get('SLACK_WEBHOOK_URL', '') }}" placeholder="https://hooks.slack.com/services/...">
+        </div>
+      </div>
+      <div class="card">
+        <h3>Webhook Callback</h3>
+        <div class="form-group">
+          <label>API Key <span class="hint" style="display:inline;">(for securing webhook endpoints)</span></label>
+          <input type="text" name="WEBHOOK_API_KEY" value="{{ env.get('WEBHOOK_API_KEY', '') }}">
+        </div>
+      </div>
+    </div>
+
+    <!-- Branding -->
+    <div class="tab-content" id="tab-branding">
+      <div class="card">
+        <h3>Report Branding</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Brand Name</label>
+            <input type="text" name="BRAND_NAME" value="{{ env.get('BRAND_NAME', 'LinkedIn Report Automation') }}">
+          </div>
+          <div class="form-group">
+            <label>Company Name</label>
+            <input type="text" name="COMPANY_NAME" value="{{ env.get('COMPANY_NAME', '') }}">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Color Theme</label>
+          <select name="THEME">
+            <option value="linkedin" {% if env.get('THEME','linkedin') == 'linkedin' %}selected{% endif %}>LinkedIn Blue</option>
+            <option value="dark" {% if env.get('THEME') == 'dark' %}selected{% endif %}>Dark Mode</option>
+            <option value="corporate" {% if env.get('THEME') == 'corporate' %}selected{% endif %}>Corporate</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:4px;">
+          {% for name, colors in [('LinkedIn', '#0A66C2,#004B87,#F5A623'), ('Dark', '#1A1A2E,#16213E,#00D27A'), ('Corporate', '#2C3E50,#34495E,#27AE60')] %}
+          <div style="display:flex;gap:2px;">
+            {% for c in colors.split(',') %}
+            <div style="width:20px;height:20px;border-radius:4px;background:{{ c }};"></div>
+            {% endfor %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:8px;margin-bottom:16px;">
+      <button type="submit" class="btn btn-primary">Save Settings</button>
+      <a href="{{ url_for('dashboard') }}" class="btn btn-outline">Cancel</a>
+    </div>
+  </form>
+
+  <!-- Account Profiles -->
+  <div class="card">
+    <div class="card-header">
+      <h3>Account Profiles</h3>
+      <button class="btn btn-outline btn-sm" onclick="showAddProfile()">+ Add Profile</button>
+    </div>
+    <div id="profilesList" style="font-size:14px;margin-bottom:12px;"></div>
+    <div id="addProfileForm" style="display:none;border-top:1px solid var(--border);padding-top:12px;">
+      <div class="form-row">
+        <div class="form-group"><label>Profile Name</label><input type="text" id="profName" placeholder="Production Account"></div>
+        <div class="form-group"><label>Account ID</label><input type="text" id="profAccount" placeholder="123456789"></div>
+      </div>
+      <div class="form-group"><label>Access Token</label><input type="password" id="profToken" placeholder="AQX..."></div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary btn-sm" onclick="saveProfile()">Save Profile</button>
+        <button class="btn btn-outline btn-sm" onclick="document.getElementById('addProfileForm').style.display='none'">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Data Retention -->
+  <div class="card">
+    <div class="card-header">
+      <h3>Data Retention</h3>
+    </div>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+      <span style="font-size:14px;">Delete reports older than</span>
+      <select id="retentionDays" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:14px;background:var(--card);color:var(--text);">
+        <option value="30">30 days</option>
+        <option value="60">60 days</option>
+        <option value="90" selected>90 days</option>
+        <option value="180">180 days</option>
+        <option value="365">1 year</option>
+      </select>
+      <button class="btn btn-warning btn-sm" onclick="applyRetention()">Apply Retention</button>
+    </div>
+    <div id="retentionStatus" style="font-size:14px;margin-top:8px;"></div>
+  </div>
+
+  <!-- Import / Export -->
+  <div class="card">
+    <div class="card-header">
+      <h3>Settings Management</h3>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <a href="/api/export-settings" class="btn btn-outline btn-sm">&#8595; Export Settings</a>
+      <button class="btn btn-outline btn-sm" onclick="document.getElementById('importFile').click()">&#8593; Import Settings</button>
+      <input type="file" id="importFile" accept=".json" style="display:none;" onchange="importSettings(this)">
+      <button class="btn btn-outline btn-sm" onclick="testWebhook()">&#128268; Test Webhook</button>
+      <button class="btn btn-danger btn-sm" onclick="resetDefaults()">&#128260; Reset to Defaults</button>
+    </div>
+    <div id="importStatus" style="font-size:14px;margin-top:8px;"></div>
+  </div>
+</div>
+
+<script>
+function toggleAI(val) {
+  document.getElementById('ollamaFields').style.display = val === 'ollama' ? 'block' : 'none';
+  document.getElementById('anthropicFields').style.display = val === 'anthropic' ? 'block' : 'none';
+  document.getElementById('openaiFields').style.display = val === 'openai' ? 'block' : 'none';
+}
+document.addEventListener('DOMContentLoaded', function() {
+  var sel = document.querySelector('[name=AI_PROVIDER]');
+  if (sel) toggleAI(sel.value);
+});
+
+async function testLinkedIn() {
+  var s = document.getElementById('linkedinStatus');
+  s.textContent = 'Testing...'; s.style.color = 'var(--muted)';
+  var token = document.querySelector('[name=LINKEDIN_ACCESS_TOKEN]').value;
+  var acct = document.querySelector('[name=LINKEDIN_ACCOUNT_ID]').value;
+  try {
+    var r = await fetch('/api/test-linkedin?token=' + encodeURIComponent(token) + '&account=' + acct);
+    var d = await r.json();
+    s.textContent = d.ok ? '\u2713 ' + d.message : '\u2717 ' + d.message;
+    s.style.color = d.ok ? 'var(--success)' : 'var(--danger)';
+  } catch(e) { s.textContent = 'Failed: ' + e; s.style.color = 'var(--danger)'; }
+}
+
+async function testOllama() {
+  var s = document.getElementById('ollamaStatus');
+  s.textContent = 'Testing...'; s.style.color = 'var(--muted)';
+  try {
+    var r = await fetch('/api/test-ollama');
+    var d = await r.json();
+    s.textContent = d.ok ? '\u2713 ' + d.message : '\u2717 ' + d.message;
+    s.style.color = d.ok ? 'var(--success)' : 'var(--danger)';
+  } catch(e) { s.textContent = 'Failed: ' + e; s.style.color = 'var(--danger)'; }
+}
+
+async function importSettings(input) {
+  var file = input.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = async function(e) {
+    try {
+      var data = JSON.parse(e.target.result);
+      var r = await fetch('/api/import-settings', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+      });
+      var d = await r.json();
+      document.getElementById('importStatus').textContent = d.ok ? '\u2713 ' + d.message : '\u2717 ' + d.message;
+      document.getElementById('importStatus').style.color = d.ok ? 'var(--success)' : 'var(--danger)';
+      if (d.ok) showToast(d.message, 'success');
+    } catch(err) {
+      document.getElementById('importStatus').textContent = 'Invalid JSON file';
+      document.getElementById('importStatus').style.color = 'var(--danger)';
+    }
+  };
+  reader.readAsText(file);
+  input.value = '';
+}
+
+async function testWebhook() {
+  var url = document.querySelector('[name=SLACK_WEBHOOK_URL]').value;
+  if (!url) { showToast('Enter a Slack webhook URL first', 'warning'); return; }
+  try {
+    showToast('Sending test message...', 'info');
+    // We can't directly call Slack from browser (CORS), so inform user
+    showToast('Webhook test: save settings first, then use the CLI to test.', 'info');
+  } catch(e) { showToast('Error: ' + e, 'error'); }
+}
+
+// Account Profiles
+async function loadProfiles() {
+  try {
+    var r = await fetch('/api/profiles');
+    var profiles = await r.json();
+    var el = document.getElementById('profilesList');
+    if (!profiles.length) {
+      el.innerHTML = '<div style="color:var(--muted);padding:8px 0;">No saved profiles. Add one to quickly switch between accounts.</div>';
+      return;
+    }
+    var html = '';
+    profiles.forEach(function(p) {
+      html += '<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);">';
+      html += '<div style="flex:1;"><strong>' + p.name + '</strong> <span style="color:var(--muted);font-size:14px;">(' + p.account_id + ')</span></div>';
+      html += '<button class="btn btn-outline btn-sm" onclick="activateProfile(\'' + p.id + '\')">Activate</button>';
+      html += '<button class="btn btn-ghost btn-sm" style="color:var(--danger);" onclick="deleteProfile(\'' + p.id + '\')">&#128465;</button>';
+      html += '</div>';
+    });
+    el.innerHTML = html;
+  } catch(e) {}
+}
+function showAddProfile() {
+  document.getElementById('addProfileForm').style.display = 'block';
+}
+async function saveProfile() {
+  var name = document.getElementById('profName').value.trim();
+  var token = document.getElementById('profToken').value.trim();
+  var account = document.getElementById('profAccount').value.trim();
+  if (!name || !account) { showToast('Name and Account ID required', 'warning'); return; }
+  await fetch('/api/profiles', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({name: name, access_token: token, account_id: account})
+  });
+  document.getElementById('addProfileForm').style.display = 'none';
+  showToast('Profile saved', 'success');
+  loadProfiles();
+}
+async function activateProfile(id) {
+  var r = await fetch('/api/profiles/' + id + '/activate', {method: 'POST'});
+  var d = await r.json();
+  if (d.ok) {
+    showToast(d.message, 'success');
+    setTimeout(function() { location.reload(); }, 1000);
+  }
+}
+async function deleteProfile(id) {
+  var ok = await showConfirm('Delete Profile', 'Remove this saved profile?');
+  if (!ok) return;
+  await fetch('/api/profiles/' + id, {method: 'DELETE'});
+  showToast('Profile deleted', 'info');
+  loadProfiles();
+}
+loadProfiles();
+
+// Data Retention
+async function applyRetention() {
+  var days = document.getElementById('retentionDays').value;
+  var ok = await showConfirm('Apply Data Retention', 'Delete all report files older than ' + days + ' days? This cannot be undone.');
+  if (!ok) return;
+  try {
+    var r = await fetch('/api/data-retention', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({days: parseInt(days)})
+    });
+    var d = await r.json();
+    document.getElementById('retentionStatus').textContent = d.ok ? '\u2713 Deleted ' + d.deleted + ' files' : 'Failed';
+    document.getElementById('retentionStatus').style.color = d.ok ? 'var(--success)' : 'var(--danger)';
+    if (d.ok) showToast('Deleted ' + d.deleted + ' old files', 'success');
+  } catch(e) { showToast('Error: ' + e, 'error'); }
+}
+
+async function resetDefaults() {
+  var ok = await showConfirm('Reset Settings', 'Reset all settings to defaults? This will clear all API keys and credentials.');
+  if (!ok) return;
+  try {
+    var r = await fetch('/api/reset-settings', {method: 'POST'});
+    var d = await r.json();
+    if (d.ok) {
+      showToast(d.message, 'success');
+      setTimeout(function() { location.reload(); }, 1000);
+    }
+  } catch(e) { showToast('Error: ' + e, 'error'); }
+}
+
+async function refreshToken() {
+  var s = document.getElementById('linkedinStatus');
+  s.textContent = 'Refreshing...'; s.style.color = 'var(--muted)';
+  try {
+    var r = await fetch('/api/refresh-token', {method: 'POST'});
+    var d = await r.json();
+    s.textContent = d.ok ? '\u2713 ' + d.message : '\u2717 ' + d.message;
+    s.style.color = d.ok ? 'var(--success)' : 'var(--danger)';
+    if (d.ok) showToast('Access token refreshed!', 'success');
+  } catch(e) { s.textContent = 'Failed: ' + e; s.style.color = 'var(--danger)'; }
+}
+</script>
+{% endblock %}

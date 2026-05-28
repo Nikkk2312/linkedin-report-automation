@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block title %}API Documentation - LinkedIn Report Automation{% endblock %}
+{% block page_title %}API Documentation{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('dashboard') }}">Dashboard</a> / API Docs{% endblock %}
+
+{% block content %}
+<div class="alert alert-info">
+  <span>&#128268;</span>
+  <span>All API endpoints available in this application. Use these for automation, integrations, or custom workflows.</span>
+</div>
+
+<!-- Stats -->
+<div class="kpi-grid" style="grid-template-columns:repeat(4, 1fr);">
+  {% set api_routes = [] %}
+  {% set page_routes = [] %}
+  {% for r in routes %}
+    {% if '/api/' in r.path %}{% if api_routes.append(r) %}{% endif %}
+    {% else %}{% if page_routes.append(r) %}{% endif %}{% endif %}
+  {% endfor %}
+  <div class="kpi-card">
+    <div class="kpi-label">Total Endpoints</div>
+    <div class="kpi-value">{{ routes|length }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">API Routes</div>
+    <div class="kpi-value">{{ api_routes|length }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Page Routes</div>
+    <div class="kpi-value">{{ page_routes|length }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Base URL</div>
+    <div class="kpi-value" style="font-size:16px;">localhost:5000</div>
+  </div>
+</div>
+
+<!-- Search -->
+<div class="card" style="padding:12px 16px;">
+  <input type="text" id="apiSearch" placeholder="Search endpoints..." style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--card);color:var(--text);">
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+  <button class="tab active" data-tab="tab-api">API Endpoints</button>
+  <button class="tab" data-tab="tab-pages">Page Routes</button>
+  <button class="tab" data-tab="tab-all">All Routes</button>
+</div>
+
+<!-- API Endpoints -->
+<div class="tab-content active" id="tab-api">
+  {% for r in routes %}
+  {% if '/api/' in r.path %}
+  <div class="card api-card" style="padding:14px 18px;">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      {% for m in r.methods %}
+      <span class="badge {% if m == 'GET' %}badge-success{% elif m == 'POST' %}badge-info{% elif m == 'DELETE' %}badge-danger{% else %}badge-neutral{% endif %}">{{ m }}</span>
+      {% endfor %}
+      <code style="font-size:14px;font-weight:700;color:var(--primary);">{{ r.path }}</code>
+      <span style="flex:1;"></span>
+      <button class="btn btn-ghost btn-sm" onclick="copyToClipboard('{{ r.path }}', 'Endpoint')" style="font-size:14px;">Copy</button>
+    </div>
+    {% if r.doc %}
+    <div style="font-size:14px;color:var(--muted);margin-top:6px;">{{ r.doc }}</div>
+    {% endif %}
+  </div>
+  {% endif %}
+  {% endfor %}
+</div>
+
+<!-- Page Routes -->
+<div class="tab-content" id="tab-pages">
+  {% for r in routes %}
+  {% if '/api/' not in r.path %}
+  <div class="card api-card" style="padding:14px 18px;">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      {% for m in r.methods %}
+      <span class="badge badge-neutral">{{ m }}</span>
+      {% endfor %}
+      <code style="font-size:14px;font-weight:700;color:var(--text);">{{ r.path }}</code>
+      <span style="flex:1;"></span>
+      <span style="font-size:14px;color:var(--muted);">{{ r.endpoint }}</span>
+    </div>
+    {% if r.doc %}
+    <div style="font-size:14px;color:var(--muted);margin-top:6px;">{{ r.doc }}</div>
+    {% endif %}
+  </div>
+  {% endif %}
+  {% endfor %}
+</div>
+
+<!-- All Routes -->
+<div class="tab-content" id="tab-all">
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Methods</th>
+          <th>Path</th>
+          <th>Endpoint</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in routes %}
+        <tr class="api-card">
+          <td>
+            {% for m in r.methods %}
+            <span class="badge {% if m == 'GET' %}badge-success{% elif m == 'POST' %}badge-info{% elif m == 'DELETE' %}badge-danger{% else %}badge-neutral{% endif %}" style="margin-right:2px;">{{ m }}</span>
+            {% endfor %}
+          </td>
+          <td><code style="font-size:14px;">{{ r.path }}</code></td>
+          <td style="font-size:14px;color:var(--muted);">{{ r.endpoint }}</td>
+          <td style="font-size:14px;">{{ r.doc[:60] }}{% if r.doc|length > 60 %}...{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Quick Reference -->
+<div class="card">
+  <h3 style="margin-bottom:12px;">Quick Reference</h3>
+  <div style="font-size:15px;line-height:1.8;">
+    <div><strong>Authentication:</strong> No auth required (local use). Set <code>WEBHOOK_API_KEY</code> in settings for external access.</div>
+    <div><strong>Content Type:</strong> POST endpoints accept <code>application/json</code></div>
+    <div><strong>Response Format:</strong> All API endpoints return JSON</div>
+    <div><strong>Rate Limits:</strong> None (local server)</div>
+  </div>
+  <h3 style="margin:16px 0 8px;">Example Usage</h3>
+  <pre style="background:var(--hover);padding:14px;border-radius:8px;font-size:14px;overflow-x:auto;border:1px solid var(--border);">
+# List all reports
+curl http://localhost:5000/api/reports
+
+# Search for reports/pages
+curl "http://localhost:5000/api/search?q=campaign"
+
+# Export trends as CSV
+curl http://localhost:5000/api/trends-csv -o trends.csv
+
+# Generate AI insights (cached)
+curl http://localhost:5000/api/insights/MY_REPORT
+
+# Get health scores
+curl http://localhost:5000/api/health-scores/MY_REPORT
+  </pre>
+</div>
+
+<script>
+document.getElementById('apiSearch')?.addEventListener('input', function() {
+  var q = this.value.toLowerCase();
+  document.querySelectorAll('.api-card').forEach(function(card) {
+    card.style.display = card.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+});
+</script>
+{% endblock %}

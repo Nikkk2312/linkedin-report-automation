@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% set report_name = report_name %}
+{% block title %}Budget Analysis - {{ report_name }}{% endblock %}
+{% block page_title %}Budget & Cost Analysis{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('dashboard') }}">Dashboard</a> / <a href="{{ url_for('view_report', report_name=report_name) }}">{{ report_name[:20] }}</a> / Budget{% endblock %}
+
+{% block content %}
+<!-- Cost KPIs -->
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-label">Total Spend</div>
+    <div class="kpi-value">${{ '{:,.2f}'.format(agg.total_spend) }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Avg CPC</div>
+    <div class="kpi-value" style="color:{% if agg.overall_cpc <= 5.58 %}var(--success){% else %}var(--danger){% endif %}">${{ '{:.2f}'.format(agg.overall_cpc) }}</div>
+    <div class="kpi-sub">Benchmark: $5.58</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">CPM</div>
+    <div class="kpi-value" style="color:{% if agg.overall_cpm <= 33.80 %}var(--success){% else %}var(--danger){% endif %}">${{ '{:.2f}'.format(agg.overall_cpm) }}</div>
+    <div class="kpi-sub">Benchmark: $33.80</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Cost per Engagement</div>
+    <div class="kpi-value">${{ '{:.2f}'.format(agg.total_spend / agg.total_eng if agg.total_eng else 0) }}</div>
+  </div>
+</div>
+
+<!-- Charts -->
+<div class="grid-2">
+  <div class="card">
+    <h3>Spend by Campaign</h3>
+    <canvas id="spendChart" height="280"></canvas>
+  </div>
+  <div class="card">
+    <h3>CPC by Campaign vs Benchmark</h3>
+    <canvas id="cpcChart" height="280"></canvas>
+  </div>
+</div>
+
+<!-- Budget Optimizer -->
+{% if budget_suggestions %}
+<div class="card" style="border-left:3px solid var(--primary);">
+  <div class="card-header">
+    <h3>&#128176; Budget Optimization Suggestions</h3>
+    <div class="card-subtitle">Based on efficiency scoring (CTR 40%, CPC 35%, Engagement 25%)</div>
+  </div>
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Campaign</th>
+          <th>Efficiency</th>
+          <th style="text-align:right;">Current Spend</th>
+          <th style="text-align:right;">Suggested</th>
+          <th style="text-align:right;">Change</th>
+          <th>Rationale</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in budget_suggestions %}
+        <tr>
+          <td style="font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ b.name }}</td>
+          <td>
+            <div class="score {% if b.efficiency_score >= 60 %}score-high{% elif b.efficiency_score >= 30 %}score-mid{% else %}score-low{% endif %}">
+              {{ b.efficiency_score }}
+            </div>
+          </td>
+          <td style="text-align:right;">${{ '{:,.2f}'.format(b.current_spend) }}</td>
+          <td style="text-align:right;">${{ '{:,.2f}'.format(b.suggested_spend) }}</td>
+          <td style="text-align:right;font-weight:600;color:{% if b.change > 0 %}var(--success){% elif b.change < 0 %}var(--danger){% else %}var(--muted){% endif %};">
+            {{ b.change_pct }}
+          </td>
+          <td style="font-size:14px;color:var(--muted);max-width:280px;">{{ b.rationale }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- Campaign Cost Table -->
+<div class="card">
+  <h3>Campaign Cost Breakdown</h3>
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Campaign</th>
+          <th style="text-align:right;">Spend</th>
+          <th style="text-align:right;">CPC</th>
+          <th style="text-align:right;">CPM</th>
+          <th style="text-align:right;">Impressions</th>
+          <th style="text-align:right;">Clicks</th>
+          <th style="text-align:right;">CTR</th>
+          <th>Cost Efficiency</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in campaigns %}
+        {% set spend = c.get('cost_usd', 0) or 0 %}
+        {% set imp = c.get('impressions', 0) or 0 %}
+        {% set cpc = c.get('cpc', 0) or 0 %}
+        {% set cpm = (spend / imp * 1000) if imp else 0 %}
+        <tr>
+          <td style="font-weight:600;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ c.get('display_name', c.get('name', 'Unknown')) }}</td>
+          <td style="text-align:right;">${{ '{:,.2f}'.format(spend) }}</td>
+          <td style="text-align:right;color:{% if cpc <= 5.58 %}var(--success){% else %}var(--danger){% endif %};">${{ '{:.2f}'.format(cpc) }}</td>
+          <td style="text-align:right;color:{% if cpm <= 33.80 %}var(--success){% else %}var(--danger){% endif %};">${{ '{:.2f}'.format(cpm) }}</td>
+          <td style="text-align:right;">{{ '{:,}'.format(imp) }}</td>
+          <td style="text-align:right;">{{ '{:,}'.format(c.get('clicks', 0) or 0) }}</td>
+          <td style="text-align:right;">{{ '{:.2f}'.format(c.get('ctr', 0) or 0) }}%</td>
+          <td>
+            {% set score = ((c.get('ctr',0) or 0) / 0.56 * 50 + (5.58 / cpc * 50 if cpc else 0))|int %}
+            {% set score = [score, 100]|min %}
+            <div style="display:flex;align-items:center;gap:6px;">
+              <div class="progress" style="flex:1;height:6px;">
+                <div class="progress-bar" style="width:{{ score }}%;background:{% if score >= 60 %}var(--success){% elif score >= 30 %}var(--accent){% else %}var(--danger){% endif %};"></div>
+              </div>
+              <span style="font-size:14px;min-width:30px;">{{ score }}%</span>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const chartColors = ['#0A66C2','#004B87','#F5A623','#057A42','#CC1C39','#8B5CF6','#06B6D4','#F97316','#10B981','#EF4444','#6366F1','#EC4899','#14B8A6','#F59E0B','#84CC16'];
+const names = {{ campaigns|map(attribute='display_name')|list|tojson }};
+const shortNames = names.map(n => n ? n.substring(0, 22) : 'Unknown');
+
+new Chart(document.getElementById('spendChart'), {
+  type: 'bar',
+  data: { labels: shortNames, datasets: [{ label: 'Spend ($)', data: {{ campaigns|map(attribute='cost_usd')|list|tojson }}, backgroundColor: chartColors }] },
+  options: { responsive: true, indexAxis: 'y', plugins: { legend: { display: false } } }
+});
+
+new Chart(document.getElementById('cpcChart'), {
+  type: 'bar',
+  data: { labels: shortNames, datasets: [
+    { label: 'CPC ($)', data: {{ campaigns|map(attribute='cpc')|list|tojson }}, backgroundColor: '#0A66C2' },
+    { label: 'Benchmark ($5.58)', data: Array(shortNames.length).fill(5.58), type: 'line', borderColor: '#CC1C39', borderDash: [5,5], pointRadius: 0, fill: false }
+  ] },
+  options: { responsive: true, indexAxis: 'y', plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 13 } } } } }
+});
+</script>
+{% endblock %}

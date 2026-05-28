@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block title %}Compare Reports - LinkedIn Report Automation{% endblock %}
+{% block page_title %}Compare Reports{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('dashboard') }}">Dashboard</a> / Compare{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <h3>Select Reports to Compare</h3>
+    <div class="card-subtitle">Choose up to 5 reports for side-by-side comparison</div>
+  </div>
+  <form method="GET" action="{{ url_for('compare_page') }}" id="compareForm">
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
+      {% for r in reports %}
+      {% if '.json' in r.get('files', {}) %}
+      <label class="checkbox-label" style="background:var(--hover);padding:6px 12px;border-radius:8px;border:1px solid var(--border);">
+        <input type="checkbox" name="reports" value="{{ r.name }}" {% if r.name in selected %}checked{% endif %}
+          onchange="if(document.querySelectorAll('[name=reports]:checked').length>5){this.checked=false;showToast('Maximum 5 reports','warning');}">
+        <span style="font-size:15px;">{{ r.name[:30] }}</span>
+        <span class="badge badge-neutral">{{ r.date }}</span>
+      </label>
+      {% endif %}
+      {% endfor %}
+    </div>
+    <button type="submit" class="btn btn-primary btn-sm">Compare Selected</button>
+  </form>
+</div>
+
+{% if comparison|length >= 2 %}
+<!-- Comparison KPIs -->
+<div class="card">
+  <h3 style="margin-bottom:16px;">Side-by-Side Comparison</h3>
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Metric</th>
+          {% for c in comparison %}
+          <th style="text-align:right;">{{ c.name[:25] }}</th>
+          {% endfor %}
+          <th style="text-align:right;">Best</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% set metrics = [
+          ('Campaigns', 'campaigns', '', 0),
+          ('Impressions', 'total_imp', '{:,}', 0),
+          ('Clicks', 'total_clicks', '{:,}', 0),
+          ('CTR (%)', 'overall_ctr', '{:.2f}', 0),
+          ('Total Spend ($)', 'total_spend', '{:,.2f}', 1),
+          ('Avg CPC ($)', 'overall_cpc', '{:.2f}', 1),
+          ('CPM ($)', 'overall_cpm', '{:.2f}', 1),
+          ('Engagements', 'total_eng', '{:,}', 0),
+          ('Engagement Rate (%)', 'eng_rate', '{:.2f}', 0),
+          ('Leads', 'total_leads', '{:,}', 0),
+          ('Likes', 'total_likes', '{:,}', 0),
+          ('Shares', 'total_shares', '{:,}', 0),
+        ] %}
+        {% for label, key, fmt, lower_better in metrics %}
+        <tr>
+          <td style="font-weight:600;">{{ label }}</td>
+          {% set values = [] %}
+          {% for c in comparison %}
+          {% set v = c.get(key, 0) or 0 %}
+          {% if values.append(v) %}{% endif %}
+          <td style="text-align:right;">
+            {% if fmt %}{{ fmt.format(v) }}{% else %}{{ v }}{% endif %}
+          </td>
+          {% endfor %}
+          <td style="text-align:right;">
+            {% set best_val = values|min if lower_better else values|max %}
+            {% set best_idx = [] %}
+            {% for v in values %}{% if v == best_val %}{% if best_idx.append(loop.index0) %}{% endif %}{% endif %}{% endfor %}
+            {% if best_idx %}
+            <span class="badge badge-success">{{ comparison[best_idx[0]].name[:15] }}</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Comparison Charts -->
+<div class="grid-2">
+  <div class="card">
+    <h3>Impressions Comparison</h3>
+    <canvas id="compImpChart" height="250"></canvas>
+  </div>
+  <div class="card">
+    <h3>CTR Comparison</h3>
+    <canvas id="compCtrChart" height="250"></canvas>
+  </div>
+</div>
+<div class="grid-2">
+  <div class="card">
+    <h3>Spend Comparison</h3>
+    <canvas id="compSpendChart" height="250"></canvas>
+  </div>
+  <div class="card">
+    <h3>CPC Comparison</h3>
+    <canvas id="compCpcChart" height="250"></canvas>
+  </div>
+</div>
+
+<script>
+var compNames = {{ comparison|map(attribute='name')|list|tojson }};
+var shortCompNames = compNames.map(function(n) { return n.substring(0, 20); });
+var colors = ['#0A66C2','#F5A623','#057A42','#CC1C39','#8B5CF6'];
+var chartOpts = { responsive: true, plugins: { legend: { display: false } } };
+
+new Chart(document.getElementById('compImpChart'), {
+  type: 'bar',
+  data: { labels: shortCompNames, datasets: [{ label: 'Impressions', data: {{ comparison|map(attribute='total_imp')|list|tojson }}, backgroundColor: colors }] },
+  options: chartOpts
+});
+new Chart(document.getElementById('compCtrChart'), {
+  type: 'bar',
+  data: { labels: shortCompNames, datasets: [
+    { label: 'CTR (%)', data: {{ comparison|map(attribute='overall_ctr')|list|tojson }}, backgroundColor: colors },
+    { label: 'Benchmark', data: Array(shortCompNames.length).fill(0.56), type: 'line', borderColor: '#CC1C39', borderDash: [5,5], pointRadius: 0, fill: false }
+  ] },
+  options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 13 } } } } }
+});
+new Chart(document.getElementById('compSpendChart'), {
+  type: 'bar',
+  data: { labels: shortCompNames, datasets: [{ label: 'Spend ($)', data: {{ comparison|map(attribute='total_spend')|list|tojson }}, backgroundColor: colors }] },
+  options: chartOpts
+});
+new Chart(document.getElementById('compCpcChart'), {
+  type: 'bar',
+  data: { labels: shortCompNames, datasets: [
+    { label: 'CPC ($)', data: {{ comparison|map(attribute='overall_cpc')|list|tojson }}, backgroundColor: colors },
+    { label: 'Benchmark', data: Array(shortCompNames.length).fill(5.58), type: 'line', borderColor: '#CC1C39', borderDash: [5,5], pointRadius: 0, fill: false }
+  ] },
+  options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 13 } } } } }
+});
+</script>
+
+{% elif selected %}
+<div class="alert alert-warning">Select at least 2 reports with JSON data to compare.</div>
+{% else %}
+<div class="empty-state">
+  <div class="icon">&#128203;</div>
+  <p>Select reports above and click "Compare Selected" to see a side-by-side comparison.</p>
+</div>
+{% endif %}
+{% endblock %}

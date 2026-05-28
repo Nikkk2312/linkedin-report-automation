@@ -1,0 +1,50 @@
+# Output files
+output/
+*.pptx
+*.pdf
+
+# Credentials & tokens (NEVER commit these)
+.env
+config/credentials.json
+config/google_token.json
+config/client_secret.json
+scripts/google_token.json
+scripts/client_secret.json
+
+# Database
+data/
+
+# n8n data
+.n8n/
+n8n_data/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+.eggs/
+
+# Node
+node_modules/
+package-lock.json
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-*
+
+# Temp
+*.tmp
+*.log

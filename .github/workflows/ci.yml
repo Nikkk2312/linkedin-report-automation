@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Syntax check all Python files
+        run: python -m py_compile run.py && python -m py_compile app.py && find src/ scripts/ -name '*.py' -exec python -m py_compile {} +
+
+      - name: Import test - core modules
+        run: |
+          python -c "from src.config import SLIDE_WIDTH, ANTHROPIC_MODEL, EMAIL_ENABLED, SLACK_ENABLED; print('config OK')"
+          python -c "from src.formatters import format_number, format_currency, abbreviate_number; print('formatters OK')"
+          python -c "from src.pptx_helpers import set_cell_border; print('pptx_helpers OK')"
+          python -c "from src.pdf_exporter import export_pdf; print('pdf_exporter OK')"
+          python -c "from src.linkedin_client import LinkedInClient; print('linkedin_client OK')"
+          python -c "from src.report_generator import generate_report; print('report_generator OK')"
+          python -c "from src.ollama_insights import generate_insights, check_ollama_available; print('ollama_insights OK')"
+          python -c "from src.setup_wizard import main; print('setup_wizard OK')"
+
+      - name: Import test - dashboard modules
+        run: |
+          python -c "from src.data_store import DataStore; print('data_store OK')"
+          python -c "from src.html_report import generate_html_report; print('html_report OK')"
+          python -c "from src.ab_test_analyzer import analyze_ab_test; print('ab_test_analyzer OK')"
+          python -c "from src.budget_optimizer import optimize_budget; print('budget_optimizer OK')"
+          python -c "from src.audience_recommender import generate_recommendations; print('audience_recommender OK')"
+          python -c "from src.email_sender import send_report_email; print('email_sender OK')"
+          python -c "from src.slack_notifier import send_slack_notification; print('slack_notifier OK')"
+          python -c "from src.archiver import archive_old_reports; print('archiver OK')"
+          python -c "from src.token_refresh import auto_refresh_if_needed; print('token_refresh OK')"
+          python -c "from src.scheduled_report import generate_scheduled_report; print('scheduled_report OK')"
+
+      - name: Run unit tests
+        run: python -m unittest discover tests/ -v
+
+      - name: Validate workflow.json
+        run: python -c "import json; json.load(open('workflow.json')); print('workflow.json is valid JSON')"
+
+      - name: Check version file
+        run: |
+          VERSION=$(cat VERSION)
+          echo "Version: $VERSION"
+          test -n "$VERSION" && echo "VERSION file OK"

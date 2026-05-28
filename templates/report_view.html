@@ -1,0 +1,626 @@
+{% extends "base.html" %}
+{% set report_name = report_name %}
+{% block title %}{{ report_name }} - Report{% endblock %}
+{% block page_title %}Report: {{ report_name[:35] }}{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('dashboard') }}">Dashboard</a> / {{ report_name[:25] }}{% endblock %}
+
+{% block topbar_actions %}
+{% if '.pptx' in files %}<a href="{{ url_for('download_file', filename=report_name+'.pptx') }}" class="btn btn-primary btn-sm">&#8595; PPTX</a>{% endif %}
+{% if '.html' in files %}<a href="{{ url_for('view_html_report', filename=report_name+'.html') }}" class="btn btn-success btn-sm" target="_blank">&#128065; HTML</a>{% endif %}
+<a href="{{ url_for('export_csv', report_name=report_name) }}" class="btn btn-outline btn-sm">&#8595; CSV</a>
+{% if '.json' in files %}<a href="{{ url_for('download_file', filename=report_name+'.json') }}" class="btn btn-outline btn-sm">&#8595; JSON</a>{% endif %}
+<a href="/api/download-zip/{{ report_name }}" class="btn btn-outline btn-sm" title="Download all files as ZIP">&#128230; ZIP</a>
+<button class="btn btn-outline btn-sm" onclick="copyToClipboard(window.location.href, 'Report link')">&#128279; Copy Link</button>
+<button class="btn btn-outline btn-sm" onclick="showEmailDialog()">&#9993; Email</button>
+{% endblock %}
+
+{% block content %}
+<!-- Quick Nav -->
+<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+  <a href="{{ url_for('demographics', report_name=report_name) }}" class="btn btn-outline btn-sm">&#128101; Demographics</a>
+  <a href="{{ url_for('insights', report_name=report_name) }}" class="btn btn-outline btn-sm">&#129504; AI Insights</a>
+  <a href="{{ url_for('budget_analysis', report_name=report_name) }}" class="btn btn-outline btn-sm">&#128176; Budget Analysis</a>
+  <a href="{{ url_for('funnel_page', report_name=report_name) }}" class="btn btn-outline btn-sm">&#9660; Funnel</a>
+  <a href="{{ url_for('whatif_page', report_name=report_name) }}" class="btn btn-outline btn-sm">&#128300; What-If</a>
+  <a href="{{ url_for('roi_calculator', report_name=report_name) }}" class="btn btn-outline btn-sm">&#128178; ROI</a>
+  <a href="{{ url_for('budget_pacing', report_name=report_name) }}" class="btn btn-outline btn-sm">&#9201; Pacing</a>
+  <a href="{{ url_for('creative_gallery', report_name=report_name) }}" class="btn btn-outline btn-sm">&#127912; Creatives</a>
+  <a href="{{ url_for('regenerate_from_data', report_name=report_name) }}" class="btn btn-ghost btn-sm" title="Regenerate PPTX from saved data">&#128260; Regenerate</a>
+  <span style="flex:1;"></span>
+  <button class="btn btn-ghost btn-sm" id="favBtn" onclick="toggleFavorite()" title="Toggle favorite" style="font-size:18px;">&#9734;</button>
+  <span class="badge badge-info" style="align-self:center;font-size:14px;">{{ report_date }}</span>
+  <span class="badge badge-neutral" style="align-self:center;font-size:14px;">{{ campaigns|length }} campaigns</span>
+</div>
+
+<!-- Loading Skeleton (shown while page renders charts) -->
+<div id="pageLoader" style="margin-bottom:16px;">
+  <div class="kpi-grid">
+    <div class="skeleton skeleton-kpi"></div>
+    <div class="skeleton skeleton-kpi"></div>
+    <div class="skeleton skeleton-kpi"></div>
+    <div class="skeleton skeleton-kpi"></div>
+  </div>
+</div>
+
+<!-- Data Quality -->
+<div id="dataQuality" style="display:none;margin-bottom:16px;"></div>
+
+<!-- Section Selector -->
+<div class="card" style="padding:10px 16px;">
+  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+    <span style="font-size:15px;font-weight:600;color:var(--muted);">Show:</span>
+    <label class="checkbox-label" style="font-size:14px;"><input type="checkbox" checked onchange="toggleSection('kpiSection',this.checked)"> KPIs</label>
+    <label class="checkbox-label" style="font-size:14px;"><input type="checkbox" checked onchange="toggleSection('chartsSection',this.checked)"> Charts</label>
+    <label class="checkbox-label" style="font-size:14px;"><input type="checkbox" checked onchange="toggleSection('tableSection',this.checked)"> Table</label>
+    <label class="checkbox-label" style="font-size:14px;"><input type="checkbox" checked onchange="toggleSection('notesSection',this.checked)"> Notes</label>
+    <label class="checkbox-label" style="font-size:14px;"><input type="checkbox" checked onchange="toggleSection('commentsSection',this.checked)"> Comments</label>
+    {% if monthly %}<label class="checkbox-label" style="font-size:14px;"><input type="checkbox" checked onchange="toggleSection('monthlySection',this.checked)"> Monthly</label>{% endif %}
+  </div>
+</div>
+
+<!-- KPIs -->
+<div class="kpi-grid" id="kpiSection">
+  <div class="kpi-card" data-tooltip="Total ad impressions served">
+    <span class="kpi-info">&#9432;</span>
+    <div class="kpi-label">Impressions</div>
+    <div class="kpi-value">{{ '{:,}'.format(agg.total_imp) }}</div>
+  </div>
+  <div class="kpi-card" data-tooltip="Total link clicks">
+    <span class="kpi-info">&#9432;</span>
+    <div class="kpi-label">Clicks</div>
+    <div class="kpi-value">{{ '{:,}'.format(agg.total_clicks) }}</div>
+  </div>
+  <div class="kpi-card" data-tooltip="Click-Through Rate. LinkedIn 2026 benchmark: 0.56%">
+    <span class="kpi-info">&#9432;</span>
+    <div class="kpi-label">CTR</div>
+    <div class="kpi-value" style="color:{% if agg.overall_ctr >= 0.56 %}var(--success){% else %}var(--danger){% endif %}">{{ '{:.2f}'.format(agg.overall_ctr) }}%</div>
+    <div class="kpi-sub">Benchmark: 0.56%</div>
+  </div>
+  <div class="kpi-card" data-tooltip="Total advertising spend in USD">
+    <span class="kpi-info">&#9432;</span>
+    <div class="kpi-label">Total Spend</div>
+    <div class="kpi-value">${{ '{:,.2f}'.format(agg.total_spend) }}</div>
+  </div>
+  <div class="kpi-card" data-tooltip="Average Cost Per Click. LinkedIn benchmark: $5.58">
+    <span class="kpi-info">&#9432;</span>
+    <div class="kpi-label">Avg CPC</div>
+    <div class="kpi-value" style="color:{% if agg.overall_cpc <= 5.58 %}var(--success){% else %}var(--danger){% endif %}">${{ '{:.2f}'.format(agg.overall_cpc) }}</div>
+    <div class="kpi-sub">Benchmark: $5.58</div>
+  </div>
+  <div class="kpi-card" data-tooltip="Total engagement actions">
+    <span class="kpi-info">&#9432;</span>
+    <div class="kpi-label">Engagements</div>
+    <div class="kpi-value">{{ '{:,}'.format(agg.total_eng) }}</div>
+    <div class="kpi-sub">{{ '{:.2f}'.format(agg.eng_rate) }}% rate</div>
+  </div>
+  {% if agg.total_leads > 0 %}
+  <div class="kpi-card" data-tooltip="One-click leads generated from lead gen forms">
+    <span class="kpi-info">&#9432;</span>
+    <div class="kpi-label">Leads</div>
+    <div class="kpi-value">{{ '{:,}'.format(agg.total_leads) }}</div>
+    <div class="kpi-sub">${{ '{:.2f}'.format(agg.total_spend / agg.total_leads if agg.total_leads else 0) }} CPL</div>
+  </div>
+  {% endif %}
+  {% if agg.total_video > 0 %}
+  <div class="kpi-card" data-tooltip="Total video views (2+ seconds)">
+    <span class="kpi-info">&#9432;</span>
+    <div class="kpi-label">Video Views</div>
+    <div class="kpi-value">{{ '{:,}'.format(agg.total_video) }}</div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Charts Row 1 -->
+<div id="chartsSection">
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header">
+      <h3>Impressions by Campaign</h3>
+      <button class="btn btn-ghost btn-sm" onclick="exportChart('impChart','impressions')" title="Download chart">&#128247;</button>
+    </div>
+    <canvas id="impChart" height="280"></canvas>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <h3>CTR vs Benchmark</h3>
+      <button class="btn btn-ghost btn-sm" onclick="exportChart('ctrChart','ctr')" title="Download chart">&#128247;</button>
+    </div>
+    <canvas id="ctrChart" height="280"></canvas>
+  </div>
+</div>
+
+<!-- Charts Row 2 -->
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header">
+      <h3>Spend by Campaign</h3>
+      <button class="btn btn-ghost btn-sm" onclick="exportChart('spendChart','spend')" title="Download chart">&#128247;</button>
+    </div>
+    <canvas id="spendChart" height="280"></canvas>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <h3>Engagement Breakdown</h3>
+      <button class="btn btn-ghost btn-sm" onclick="exportChart('engChart','engagement')" title="Download chart">&#128247;</button>
+    </div>
+    <canvas id="engChart" height="280"></canvas>
+  </div>
+</div>
+
+<!-- Charts Row 3 -->
+{% if monthly %}
+<div class="grid-2" id="monthlySection">
+  <div class="card">
+    <h3>Monthly Trends</h3>
+    <canvas id="monthlyChart" height="250"></canvas>
+  </div>
+  <div class="card">
+    <h3>Campaign Type Distribution</h3>
+    <canvas id="typeChart" height="250"></canvas>
+  </div>
+</div>
+{% endif %}
+</div><!-- end chartsSection -->
+
+<!-- Campaign Table -->
+<div class="card" id="tableSection">
+  <div class="card-header">
+    <h3>Campaigns ({{ campaigns|length }})</h3>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+      <input type="text" id="campSearch" placeholder="Search..." style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;width:160px;background:var(--card);color:var(--text);">
+      <select id="groupBy" onchange="groupCampaigns(this.value)" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--card);color:var(--text);">
+        <option value="">No Grouping</option>
+        <option value="type">By Type</option>
+        <option value="status">By Status</option>
+      </select>
+      {% for ct in campaign_types %}
+      <button class="btn btn-ghost btn-sm camp-filter" data-type="{{ ct }}" onclick="filterCampaigns(this)">{{ ct }}</button>
+      {% endfor %}
+      <button class="btn btn-ghost btn-sm camp-filter active" data-type="all" onclick="filterCampaigns(this)">All</button>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table class="table" id="campTable">
+      <thead>
+        <tr>
+          <th>Campaign</th>
+          <th>Type</th>
+          <th>Status</th>
+          <th>Health</th>
+          <th style="text-align:right;">Impressions</th>
+          <th style="text-align:right;">Clicks</th>
+          <th style="text-align:right;">CTR</th>
+          <th style="text-align:right;">CPC</th>
+          <th style="text-align:right;">Spend</th>
+          <th style="text-align:right;">Engagements</th>
+          <th style="text-align:right;">Likes</th>
+          <th style="text-align:right;">Comments</th>
+          <th style="text-align:right;">Shares</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in campaigns %}
+        {% set ctr = c.get('ctr', 0) or 0 %}
+        {% set cpc = c.get('cpc', 0) or 0 %}
+        {% set imp = c.get('impressions', 0) or 0 %}
+        {% set eng = c.get('engagements', 0) or 0 %}
+        {% set eng_rate = (eng / imp * 100) if imp else 0 %}
+        {% set ctr_s = ([ctr / 0.56 * 50, 100]|min) %}
+        {% set cpc_s = ([5.58 / cpc * 50, 100]|min) if cpc > 0 else 50 %}
+        {% set eng_s = ([eng_rate / 0.5 * 50, 100]|min) %}
+        {% set health = (ctr_s * 0.4 + cpc_s * 0.35 + eng_s * 0.25)|round|int %}
+        <tr data-type="{{ c.get('campaign_type', 'Other') }}">
+          <td style="font-weight:600;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ c.get('display_name', c.get('name', 'Unknown')) }}">
+            <a href="{{ url_for('campaign_detail', report_name=report_name, campaign_id=c.get('id', '')) }}" style="color:var(--primary);text-decoration:none;">{{ c.get('display_name', c.get('name', 'Unknown')) }}</a>
+          </td>
+          <td><span class="badge badge-info">{{ c.get('campaign_type', 'N/A') }}</span></td>
+          <td><span class="badge {% if c.get('status') == 'ACTIVE' %}badge-success{% elif c.get('status') == 'PAUSED' %}badge-warning{% else %}badge-neutral{% endif %}">{{ c.get('status', 'N/A') }}</span></td>
+          <td>
+            <span class="health-badge {% if health >= 75 %}health-excellent{% elif health >= 50 %}health-good{% elif health >= 25 %}health-fair{% else %}health-poor{% endif %}"
+              data-tooltip="CTR: {{ ctr_s|int }}/100, CPC: {{ cpc_s|int }}/100, Eng: {{ eng_s|int }}/100">
+              {{ health }}
+              {% if health >= 75 %}Excellent{% elif health >= 50 %}Good{% elif health >= 25 %}Fair{% else %}Poor{% endif %}
+            </span>
+          </td>
+          <td style="text-align:right;">{{ '{:,}'.format(imp) }}</td>
+          <td style="text-align:right;">{{ '{:,}'.format(c.get('clicks', 0) or 0) }}</td>
+          <td style="text-align:right;color:{% if ctr >= 0.56 %}var(--success){% elif ctr < 0.3 %}var(--danger){% else %}var(--text){% endif %}">{{ '{:.2f}'.format(ctr) }}%</td>
+          <td style="text-align:right;">${{ '{:.2f}'.format(cpc) }}</td>
+          <td style="text-align:right;">${{ '{:,.2f}'.format(c.get('cost_usd', 0) or 0) }}</td>
+          <td style="text-align:right;">{{ '{:,}'.format(eng) }}</td>
+          <td style="text-align:right;">{{ c.get('likes', 0) or 0 }}</td>
+          <td style="text-align:right;">{{ c.get('comments', 0) or 0 }}</td>
+          <td style="text-align:right;">{{ c.get('shares', 0) or 0 }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Notes Section -->
+<div class="card" id="notesSection">
+  <div class="card-header">
+    <h3>Report Notes</h3>
+    <span class="badge badge-neutral" id="notesCount">0</span>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:12px;">
+    <input type="text" id="noteInput" placeholder="Add a note..." style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--card);color:var(--text);">
+    <button class="btn btn-primary btn-sm" onclick="addNote()">Add</button>
+  </div>
+  <div id="notesContainer" style="font-size:14px;"></div>
+</div>
+
+<!-- Comments Section -->
+<div class="card" id="commentsSection">
+  <div class="card-header">
+    <h3>Comments</h3>
+    <span class="badge badge-neutral" id="commentsCount">0</span>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:12px;">
+    <input type="text" id="commentAuthor" placeholder="Your name" value="Anonymous" style="width:120px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--card);color:var(--text);">
+    <input type="text" id="commentInput" placeholder="Add a comment..." style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--card);color:var(--text);">
+    <button class="btn btn-primary btn-sm" onclick="addComment()">Post</button>
+  </div>
+  <div id="commentsContainer" style="font-size:14px;"></div>
+</div>
+
+<!-- Version History -->
+<div class="card">
+  <div class="card-header">
+    <h3>Version History</h3>
+    <button class="btn btn-outline btn-sm" onclick="shareReport()">&#128279; Share Report</button>
+  </div>
+  <div id="versionsContainer" style="font-size:14px;color:var(--muted);">Loading...</div>
+</div>
+
+<!-- Email Dialog Modal -->
+<div class="modal-overlay" id="emailModal">
+  <div class="modal">
+    <button class="modal-close" onclick="hideEmailDialog()">&times;</button>
+    <h3>Email Report</h3>
+    <div class="form-group" style="margin-top:14px;">
+      <label>Recipients (comma-separated)</label>
+      <input type="text" id="emailRecipients" placeholder="team@company.com, boss@company.com">
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-primary" onclick="sendEmail()">Send Report</button>
+      <button class="btn btn-outline" onclick="hideEmailDialog()">Cancel</button>
+    </div>
+    <div id="emailStatus" style="margin-top:10px;font-size:14px;"></div>
+  </div>
+</div>
+
+<script>
+// Hide loading skeleton once page is ready
+document.addEventListener('DOMContentLoaded', function() {
+  var loader = document.getElementById('pageLoader');
+  if (loader) setTimeout(function() { loader.style.display = 'none'; }, 300);
+});
+
+// Section selector
+function toggleSection(id, show) {
+  var el = document.getElementById(id);
+  if (el) el.style.display = show ? '' : 'none';
+}
+
+var chartColors = ['#0A66C2','#004B87','#F5A623','#057A42','#CC1C39','#8B5CF6','#06B6D4','#F97316','#10B981','#EF4444','#6366F1','#EC4899','#14B8A6','#F59E0B','#84CC16'];
+var campNames = {{ campaigns|map(attribute='display_name')|list|tojson }};
+var shortNames = campNames.map(function(n) { return n ? n.substring(0, 22) : 'Unknown'; });
+
+// Impressions chart
+new Chart(document.getElementById('impChart'), {
+  type: 'bar',
+  data: { labels: shortNames, datasets: [{ label: 'Impressions', data: {{ campaigns|map(attribute='impressions')|list|tojson }}, backgroundColor: chartColors }] },
+  options: { responsive: true, indexAxis: 'y', plugins: { legend: { display: false } } }
+});
+
+// CTR chart
+new Chart(document.getElementById('ctrChart'), {
+  type: 'bar',
+  data: { labels: shortNames, datasets: [
+    { label: 'CTR (%)', data: {{ campaigns|map(attribute='ctr')|list|tojson }}, backgroundColor: '#057A42' },
+    { label: 'Benchmark', data: Array(shortNames.length).fill(0.56), type: 'line', borderColor: '#CC1C39', borderDash: [5,5], pointRadius: 0, fill: false }
+  ] },
+  options: { responsive: true, indexAxis: 'y', plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 13 } } } } }
+});
+
+// Spend chart
+new Chart(document.getElementById('spendChart'), {
+  type: 'doughnut',
+  data: { labels: shortNames, datasets: [{ data: {{ campaigns|map(attribute='cost_usd')|list|tojson }}, backgroundColor: chartColors }] },
+  options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 12 } } } } }
+});
+
+// Engagement breakdown
+new Chart(document.getElementById('engChart'), {
+  type: 'bar',
+  data: {
+    labels: {{ engagement_data|map(attribute='name')|list|tojson }},
+    datasets: [
+      { label: 'Likes', data: {{ engagement_data|map(attribute='likes')|list|tojson }}, backgroundColor: '#0A66C2' },
+      { label: 'Comments', data: {{ engagement_data|map(attribute='comments')|list|tojson }}, backgroundColor: '#F5A623' },
+      { label: 'Shares', data: {{ engagement_data|map(attribute='shares')|list|tojson }}, backgroundColor: '#057A42' }
+    ]
+  },
+  options: { responsive: true, scales: { x: { stacked: true }, y: { stacked: true } }, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 13 } } } } }
+});
+
+{% if monthly %}
+// Monthly trends
+var monthLabels = {{ monthly.keys()|list|tojson }};
+new Chart(document.getElementById('monthlyChart'), {
+  type: 'line',
+  data: {
+    labels: monthLabels,
+    datasets: [
+      { label: 'Impressions', data: {{ monthly.values()|map(attribute='impressions')|list|tojson }}, borderColor: '#0A66C2', tension: 0.3, fill: false },
+      { label: 'Clicks', data: {{ monthly.values()|map(attribute='clicks')|list|tojson }}, borderColor: '#F5A623', tension: 0.3, fill: false }
+    ]
+  },
+  options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 13 } } } } }
+});
+
+// Campaign type distribution
+var typeCounts = {};
+{{ campaigns|tojson }}.forEach(function(c) { var t = c.campaign_type || 'Other'; typeCounts[t] = (typeCounts[t] || 0) + 1; });
+new Chart(document.getElementById('typeChart'), {
+  type: 'doughnut',
+  data: { labels: Object.keys(typeCounts), datasets: [{ data: Object.values(typeCounts), backgroundColor: chartColors }] },
+  options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 13 } } } } }
+});
+{% endif %}
+
+// Campaign filters
+function filterCampaigns(btn) {
+  document.querySelectorAll('.camp-filter').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+  var type = btn.dataset.type;
+  document.querySelectorAll('#campTable tbody tr').forEach(function(row) {
+    row.style.display = (type === 'all' || row.dataset.type === type) ? '' : 'none';
+  });
+}
+document.getElementById('campSearch')?.addEventListener('input', function() {
+  var q = this.value.toLowerCase();
+  document.querySelectorAll('#campTable tbody tr').forEach(function(row) {
+    row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+});
+
+// Campaign grouping
+function groupCampaigns(field) {
+  var tbody = document.querySelector('#campTable tbody');
+  if (!tbody) return;
+  // Remove existing group headers
+  tbody.querySelectorAll('.group-header').forEach(function(r) { r.remove(); });
+  var rows = Array.from(tbody.querySelectorAll('tr:not(.group-header)'));
+
+  if (!field) {
+    rows.forEach(function(r) { r.style.display = ''; });
+    return;
+  }
+
+  var groups = {};
+  rows.forEach(function(r) {
+    var key;
+    if (field === 'type') {
+      key = r.dataset.type || 'Other';
+    } else if (field === 'status') {
+      var badge = r.querySelector('.badge-success, .badge-warning, .badge-neutral');
+      key = badge ? badge.textContent.trim() : 'Unknown';
+    }
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(r);
+  });
+
+  // Clear and re-add with group headers
+  rows.forEach(function(r) { r.remove(); });
+  Object.keys(groups).sort().forEach(function(key) {
+    var header = document.createElement('tr');
+    header.className = 'group-header';
+    header.innerHTML = '<td colspan="13" style="background:var(--primary-light);font-weight:700;font-size:15px;color:var(--primary);padding:8px 14px;">' + key + ' (' + groups[key].length + ')</td>';
+    tbody.appendChild(header);
+    groups[key].forEach(function(r) { tbody.appendChild(r); });
+  });
+}
+
+// Chart export
+function exportChart(canvasId, name) {
+  var canvas = document.getElementById(canvasId);
+  var link = document.createElement('a');
+  link.download = '{{ report_name }}_' + name + '.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+  showToast('Chart downloaded as PNG', 'success');
+}
+
+// Data quality check
+(async function() {
+  try {
+    var r = await fetch('/api/data-quality/{{ report_name }}');
+    var d = await r.json();
+    var el = document.getElementById('dataQuality');
+    var cls = d.score >= 80 ? 'alert-success' : d.score >= 50 ? 'alert-warning' : 'alert-error';
+    var html = '<div class="alert ' + cls + '" style="justify-content:space-between;"><div>';
+    html += '<strong>Data Quality: ' + d.score + '/100</strong> &mdash; ';
+    html += d.issues.map(function(i) { return i.message; }).join(' | ');
+    html += '</div></div>';
+    el.innerHTML = html;
+    el.style.display = 'block';
+  } catch(e) {}
+})();
+
+// Favorites
+(async function() {
+  try {
+    var r = await fetch('/api/favorites');
+    var favs = await r.json();
+    if (favs.includes('{{ report_name }}')) {
+      document.getElementById('favBtn').innerHTML = '&#9733;';
+      document.getElementById('favBtn').style.color = 'var(--accent)';
+    }
+  } catch(e) {}
+})();
+async function toggleFavorite() {
+  var r = await fetch('/api/favorite/{{ report_name }}', {method: 'POST'});
+  var d = await r.json();
+  var btn = document.getElementById('favBtn');
+  if (d.favorited) {
+    btn.innerHTML = '&#9733;'; btn.style.color = 'var(--accent)';
+    showToast('Report starred', 'success');
+  } else {
+    btn.innerHTML = '&#9734;'; btn.style.color = '';
+    showToast('Star removed', 'info');
+  }
+}
+
+// HTML escape to prevent XSS
+function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+// Notes
+async function loadNotes() {
+  try {
+    var r = await fetch('/api/notes/{{ report_name }}');
+    var notes = await r.json();
+    document.getElementById('notesCount').textContent = notes.length;
+    var html = '';
+    notes.forEach(function(n) {
+      html += '<div style="padding:8px 0;border-bottom:1px solid var(--border);"><span style="color:var(--muted);font-size:14px;">' + esc(n.time) + '</span><br>' + esc(n.text) + '</div>';
+    });
+    document.getElementById('notesContainer').innerHTML = html || '<span style="color:var(--muted);">No notes yet.</span>';
+  } catch(e) {}
+}
+async function addNote() {
+  var input = document.getElementById('noteInput');
+  var text = input.value.trim();
+  if (!text) return;
+  await fetch('/api/notes/{{ report_name }}', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({note: text})
+  });
+  input.value = '';
+  showToast('Note added', 'success');
+  loadNotes();
+}
+loadNotes();
+
+// Comments
+async function loadComments() {
+  try {
+    var r = await fetch('/api/comments/{{ report_name }}');
+    var comments = await r.json();
+    document.getElementById('commentsCount').textContent = comments.length;
+    var html = '';
+    if (!comments.length) {
+      html = '<span style="color:var(--muted);">No comments yet. Be the first to comment.</span>';
+    }
+    comments.forEach(function(c) {
+      html += '<div style="padding:10px 0;border-bottom:1px solid var(--border);">';
+      html += '<div style="display:flex;justify-content:space-between;"><strong style="color:var(--primary);">' + esc(c.author) + '</strong><span style="font-size:14px;color:var(--muted);">' + esc(c.time) + '</span></div>';
+      html += '<div style="margin-top:4px;">' + esc(c.text) + '</div>';
+      if (c.replies && c.replies.length) {
+        c.replies.forEach(function(r) {
+          html += '<div style="margin-left:24px;padding:8px 0;border-left:2px solid var(--border);padding-left:12px;margin-top:6px;">';
+          html += '<strong style="font-size:14px;">' + esc(r.author) + '</strong> <span style="font-size:14px;color:var(--muted);">' + esc(r.time) + '</span>';
+          html += '<div style="margin-top:2px;">' + esc(r.text) + '</div></div>';
+        });
+      }
+      html += '<button class="btn btn-ghost btn-sm" style="font-size:14px;margin-top:4px;" onclick="replyToComment(\'' + c.id + '\')">Reply</button>';
+      html += '</div>';
+    });
+    document.getElementById('commentsContainer').innerHTML = html;
+  } catch(e) {}
+}
+async function addComment(parentId) {
+  var text = document.getElementById('commentInput').value.trim();
+  var author = document.getElementById('commentAuthor').value.trim() || 'Anonymous';
+  if (!text) return;
+  await fetch('/api/comments/{{ report_name }}', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({text: text, author: author, parent_id: parentId || null})
+  });
+  document.getElementById('commentInput').value = '';
+  showToast('Comment posted', 'success');
+  loadComments();
+}
+function replyToComment(parentId) {
+  var text = prompt('Enter your reply:');
+  if (!text) return;
+  var author = document.getElementById('commentAuthor').value.trim() || 'Anonymous';
+  fetch('/api/comments/{{ report_name }}', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({text: text, author: author, parent_id: parentId})
+  }).then(function() {
+    showToast('Reply posted', 'success');
+    loadComments();
+  });
+}
+loadComments();
+
+// Version history
+(async function() {
+  try {
+    var r = await fetch('/api/versions/{{ report_name }}');
+    var versions = await r.json();
+    var el = document.getElementById('versionsContainer');
+    if (!versions.length) {
+      el.innerHTML = '<span>No version history recorded.</span>';
+      return;
+    }
+    var html = '';
+    versions.forEach(function(v) {
+      html += '<div style="display:flex;gap:12px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);">';
+      html += '<span class="badge badge-info">v' + v.version + '</span>';
+      html += '<span style="font-size:14px;">' + v.type.replace('_', ' ') + '</span>';
+      html += '<span style="font-size:14px;color:var(--muted);">' + v.time + '</span>';
+      html += '<span style="font-size:14px;color:var(--muted);">' + v.campaigns + ' campaigns</span>';
+      html += '</div>';
+    });
+    el.innerHTML = html;
+  } catch(e) {
+    document.getElementById('versionsContainer').innerHTML = '<span>Version tracking available for new reports.</span>';
+  }
+})();
+
+// Share report
+async function shareReport() {
+  try {
+    var r = await fetch('/api/share/{{ report_name }}', {method: 'POST'});
+    var d = await r.json();
+    if (d.ok) {
+      copyToClipboard(d.url, 'Share link');
+      showToast('Share link created and copied!', 'success');
+    }
+  } catch(e) { showToast('Failed to create share link', 'error'); }
+}
+
+// Email dialog
+function showEmailDialog() { document.getElementById('emailModal').classList.add('active'); }
+function hideEmailDialog() { document.getElementById('emailModal').classList.remove('active'); }
+async function sendEmail() {
+  var recipients = document.getElementById('emailRecipients').value;
+  if (!recipients) { showToast('Enter at least one email address', 'warning'); return; }
+  var status = document.getElementById('emailStatus');
+  status.textContent = 'Sending...';
+  status.style.color = 'var(--muted)';
+  try {
+    var r = await fetch('/api/email-report/{{ report_name }}', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({recipients: recipients})
+    });
+    var d = await r.json();
+    if (d.ok) {
+      showToast(d.message, 'success');
+      hideEmailDialog();
+    } else {
+      status.textContent = d.message;
+      status.style.color = 'var(--danger)';
+    }
+  } catch(e) {
+    status.textContent = 'Failed: ' + e;
+    status.style.color = 'var(--danger)';
+  }
+}
+</script>
+{% endblock %}

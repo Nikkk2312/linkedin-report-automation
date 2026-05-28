@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}Alerts - LinkedIn Report Automation{% endblock %}
+{% block page_title %}Performance Alerts{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('dashboard') }}">Dashboard</a> / Alerts{% endblock %}
+
+{% block content %}
+<div class="grid-2">
+  <!-- Alert List -->
+  <div>
+    <div class="card">
+      <div class="card-header">
+        <h3>Configured Alerts</h3>
+        <span class="badge badge-info">{{ alerts|length }} total</span>
+      </div>
+      {% if alerts %}
+      {% for a in alerts %}
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 0;{% if not loop.last %}border-bottom:1px solid var(--border);{% endif %}" id="alert-{{ a.id }}">
+        <div style="font-size:20px;">&#128276;</div>
+        <div style="flex:1;">
+          <div style="font-size:16px;font-weight:600;">{{ a.name }}</div>
+          <div style="font-size:14px;color:var(--muted);">
+            When <strong>{{ a.metric|upper }}</strong> is
+            <strong>{{ a.condition }}</strong>
+            <strong>{{ a.threshold }}</strong>
+          </div>
+          <div style="font-size:14px;color:var(--muted);margin-top:2px;">
+            {% if a.notify_email %}Email: {{ a.notify_email }}{% endif %}
+            {% if a.notify_slack %} &middot; Slack notification{% endif %}
+            &middot; Created {{ a.created }}
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <button class="btn btn-outline btn-sm" onclick="toggleAlert('{{ a.id }}', this)">
+            {% if a.enabled %}Disable{% else %}Enable{% endif %}
+          </button>
+          <button class="btn btn-ghost btn-sm" style="color:var(--danger);" onclick="deleteAlert('{{ a.id }}')">&#128465;</button>
+        </div>
+        <span class="badge {% if a.enabled %}badge-success{% else %}badge-neutral{% endif %}">
+          {% if a.enabled %}Active{% else %}Disabled{% endif %}
+        </span>
+      </div>
+      {% endfor %}
+      {% else %}
+      <div class="empty-state" style="padding:24px;">
+        <div class="icon">&#128276;</div>
+        <p>No alerts configured. Create one to get notified about campaign performance changes.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Create Alert -->
+  <div>
+    <div class="card">
+      <h3 style="margin-bottom:14px;">Create Alert</h3>
+      <form method="POST" action="{{ url_for('alerts_page') }}">
+        <div class="form-group">
+          <label>Alert Name</label>
+          <input type="text" name="name" placeholder="CTR Below Benchmark" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Metric</label>
+            <select name="metric">
+              <option value="ctr">CTR (%)</option>
+              <option value="cpc">CPC ($)</option>
+              <option value="cpm">CPM ($)</option>
+              <option value="spend">Total Spend ($)</option>
+              <option value="impressions">Impressions</option>
+              <option value="clicks">Clicks</option>
+              <option value="engagements">Engagements</option>
+              <option value="eng_rate">Engagement Rate (%)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Condition</label>
+            <select name="condition">
+              <option value="below">Falls below</option>
+              <option value="above">Rises above</option>
+              <option value="changes_by">Changes by more than</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Threshold Value</label>
+          <input type="number" name="threshold" step="0.01" placeholder="0.56" required>
+          <div class="hint">E.g., CTR benchmark is 0.56%, CPC benchmark is $5.58</div>
+        </div>
+        <div class="form-group">
+          <label>Email Notification <span class="hint" style="display:inline;">(comma-separated)</span></label>
+          <input type="text" name="notify_email" placeholder="team@company.com">
+        </div>
+        <div style="margin-bottom:14px;">
+          <label class="checkbox-label"><input type="checkbox" name="notify_slack"> Also notify via Slack</label>
+        </div>
+        <button type="submit" class="btn btn-primary">Create Alert</button>
+      </form>
+    </div>
+
+    <!-- Common Alert Templates -->
+    <div class="card">
+      <h3 style="margin-bottom:12px;">Quick Templates</h3>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <button class="btn btn-outline btn-sm" onclick="fillAlert('CTR Below Benchmark','ctr','below','0.56')">CTR below 0.56% (LinkedIn benchmark)</button>
+        <button class="btn btn-outline btn-sm" onclick="fillAlert('CPC Above Benchmark','cpc','above','5.58')">CPC above $5.58 (LinkedIn benchmark)</button>
+        <button class="btn btn-outline btn-sm" onclick="fillAlert('High Spend Alert','spend','above','1000')">Total spend exceeds $1,000</button>
+        <button class="btn btn-outline btn-sm" onclick="fillAlert('Low Impressions','impressions','below','1000')">Impressions below 1,000</button>
+        <button class="btn btn-outline btn-sm" onclick="fillAlert('CPM Above Benchmark','cpm','above','33.80')">CPM above $33.80 (LinkedIn benchmark)</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function fillAlert(name, metric, condition, threshold) {
+  document.querySelector('[name=name]').value = name;
+  document.querySelector('[name=metric]').value = metric;
+  document.querySelector('[name=condition]').value = condition;
+  document.querySelector('[name=threshold]').value = threshold;
+  showToast('Template loaded. Customize and click Create.', 'info');
+}
+
+async function toggleAlert(id, btn) {
+  var r = await fetch('/api/alert/' + id + '/toggle', {method: 'POST'});
+  var d = await r.json();
+  if (d.ok) {
+    btn.textContent = d.enabled ? 'Disable' : 'Enable';
+    var badge = btn.closest('[id]').querySelector('.badge');
+    badge.className = 'badge ' + (d.enabled ? 'badge-success' : 'badge-neutral');
+    badge.textContent = d.enabled ? 'Active' : 'Disabled';
+    showToast('Alert ' + (d.enabled ? 'enabled' : 'disabled'), 'success');
+  }
+}
+
+async function deleteAlert(id) {
+  var ok = await showConfirm('Delete Alert', 'Are you sure you want to delete this alert?');
+  if (!ok) return;
+  var r = await fetch('/api/alert/' + id + '/delete', {method: 'POST'});
+  var d = await r.json();
+  if (d.ok) {
+    document.getElementById('alert-' + id).remove();
+    showToast('Alert deleted', 'success');
+  }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% set report_name = report_name %}
+{% block title %}Demographics - {{ report_name }}{% endblock %}
+{% block page_title %}Demographics{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('dashboard') }}">Dashboard</a> / <a href="{{ url_for('view_report', report_name=report_name) }}">{{ report_name[:20] }}</a> / Demographics{% endblock %}
+
+{% block content %}
+<!-- Pivot Tabs -->
+<div class="tabs">
+  {% for key, label in pivot_types %}
+  {% if label in aggregated %}
+  <button class="tab {% if loop.first %}active{% endif %}" data-tab="tab-{{ label|replace(' ','_') }}">{{ label }}</button>
+  {% endif %}
+  {% endfor %}
+</div>
+
+{% for key, label in pivot_types %}
+{% if label in aggregated %}
+<div class="tab-content {% if loop.first %}active{% endif %}" id="tab-{{ label|replace(' ','_') }}">
+  <div class="grid-2">
+    <div class="card">
+      <h3>{{ label }} — Impressions Distribution</h3>
+      <canvas id="chart_{{ label|replace(' ','_') }}" height="300"></canvas>
+    </div>
+    <div class="card">
+      <h3>{{ label }} — CTR Performance</h3>
+      <canvas id="ctr_{{ label|replace(' ','_') }}" height="300"></canvas>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h3>{{ label }} — Detailed Breakdown</h3>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-ghost btn-sm" onclick="exportChart('chart_{{ label|replace(' ','_') }}','{{ label }}_impressions')" title="Download chart">&#128247;</button>
+        <a href="/api/export-demographics-csv/{{ report_name }}/{{ key }}" class="btn btn-outline btn-sm">&#8595; CSV</a>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>{{ label }}</th>
+            <th style="text-align:right;">Impressions</th>
+            <th style="text-align:right;">Clicks</th>
+            <th style="text-align:right;">CTR</th>
+            <th>Share</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% set total_imp = aggregated[label]|sum(attribute='impressions') %}
+          {% for item in aggregated[label] %}
+          <tr>
+            <td style="font-weight:600;">{{ item.name }}</td>
+            <td style="text-align:right;">{{ '{:,}'.format(item.impressions) }}</td>
+            <td style="text-align:right;">{{ '{:,}'.format(item.clicks) }}</td>
+            <td style="text-align:right;color:{% if item.ctr >= 0.56 %}var(--success){% elif item.ctr < 0.3 %}var(--danger){% else %}var(--text){% endif %}">{{ '{:.2f}'.format(item.ctr) }}%</td>
+            <td>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <div class="progress" style="flex:1;height:6px;">
+                  <div class="progress-bar" style="width:{{ (item.impressions / total_imp * 100) if total_imp else 0 }}%;"></div>
+                </div>
+                <span style="font-size:14px;color:var(--muted);min-width:35px;">{{ '{:.1f}'.format(item.impressions / total_imp * 100) if total_imp else 0 }}%</span>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endfor %}
+
+<!-- Campaign Selector -->
+<div class="card">
+  <div class="card-header">
+    <h3>Filter by Campaign</h3>
+  </div>
+  <select id="campaignFilter" onchange="filterByCampaign(this.value)" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--card);color:var(--text);">
+    <option value="">All Campaigns (Aggregated)</option>
+    {% for c in campaigns %}
+    <option value="{{ c.get('id','') }}" {% if selected_campaign == c.get('id','')|string %}selected{% endif %}>{{ c.get('display_name', c.get('name', 'Unknown')) }}</option>
+    {% endfor %}
+  </select>
+</div>
+
+{% if not aggregated %}
+<div class="empty-state">
+  <div class="icon">&#128101;</div>
+  <p>No demographic data available for this report.</p>
+</div>
+{% endif %}
+
+<script>
+const demoColors = ['#0A66C2','#004B87','#F5A623','#057A42','#CC1C39','#8B5CF6','#06B6D4','#F97316','#10B981','#EF4444','#6366F1','#EC4899','#14B8A6','#F59E0B','#84CC16','#A855F7','#F43F5E','#22D3EE','#FB923C','#4ADE80'];
+
+{% for key, label in pivot_types %}
+{% if label in aggregated %}
+(function() {
+  const items = {{ aggregated[label]|tojson }};
+  const labels = items.map(i => i.name.substring(0, 25));
+
+  new Chart(document.getElementById('chart_{{ label|replace(" ","_") }}'), {
+    type: 'bar',
+    data: { labels: labels, datasets: [{ label: 'Impressions', data: items.map(i => i.impressions), backgroundColor: demoColors }] },
+    options: { responsive: true, indexAxis: 'y', plugins: { legend: { display: false } } }
+  });
+
+  new Chart(document.getElementById('ctr_{{ label|replace(" ","_") }}'), {
+    type: 'bar',
+    data: { labels: labels, datasets: [
+      { label: 'CTR (%)', data: items.map(i => i.ctr), backgroundColor: '#057A42' },
+      { label: 'Benchmark', data: Array(labels.length).fill(0.56), type: 'line', borderColor: '#CC1C39', borderDash: [5,5], pointRadius: 0, fill: false }
+    ] },
+    options: { responsive: true, indexAxis: 'y', plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 13 } } } } }
+  });
+})();
+{% endif %}
+{% endfor %}
+
+function exportChart(canvasId, name) {
+  var canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  var link = document.createElement('a');
+  link.download = '{{ report_name }}_' + name + '.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+  showToast('Chart downloaded', 'success');
+}
+
+function filterByCampaign(val) {
+  if (val) {
+    window.location = '{{ url_for("demographics", report_name=report_name) }}?campaign=' + val;
+  } else {
+    window.location = '{{ url_for("demographics", report_name=report_name) }}';
+  }
+}
+</script>
+{% endblock %}

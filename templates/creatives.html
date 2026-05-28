@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% set report_name = report_name %}
+{% block title %}Creative Gallery - {{ report_name }}{% endblock %}
+{% block page_title %}Creative Gallery{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('dashboard') }}">Dashboard</a> / <a href="{{ url_for('view_report', report_name=report_name) }}">{{ report_name[:20] }}</a> / Creatives{% endblock %}
+
+{% block content %}
+{% if creatives %}
+<!-- Sort/Filter Controls -->
+<div class="card" style="padding:12px 16px;">
+  <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+    <span style="font-size:15px;font-weight:600;color:var(--muted);">Sort by:</span>
+    <select id="sortCreatives" onchange="sortCreatives()" style="padding:8px 14px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--card);color:var(--text);min-height:40px;">
+      <option value="impressions">Impressions</option>
+      <option value="clicks">Clicks</option>
+      <option value="ctr">CTR</option>
+      <option value="engagement">Engagements</option>
+    </select>
+    <input type="text" id="creativeSearch" placeholder="Search creatives..." style="padding:8px 14px;border:1px solid var(--border);border-radius:8px;font-size:14px;width:200px;background:var(--card);color:var(--text);min-height:40px;">
+    <span style="flex:1;"></span>
+    <span class="badge badge-info">{{ creatives|length }} creatives</span>
+  </div>
+</div>
+
+<!-- Gallery Grid -->
+<div id="creativeGrid" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(300px, 1fr));gap:16px;">
+  {% for cr in creatives %}
+  <div class="card creative-card" data-imp="{{ cr.get('impressions', 0) or 0 }}" data-clicks="{{ cr.get('clicks', 0) or 0 }}" data-ctr="{{ cr.get('ctr', 0) or 0 }}" data-eng="{{ cr.get('totalEngagements', 0) or cr.get('engagements', 0) or 0 }}" style="padding:0;overflow:hidden;">
+    <!-- Preview area -->
+    <div style="background:var(--hover);padding:20px;min-height:140px;display:flex;align-items:center;justify-content:center;">
+      {% if cr.get('thumbnail_url') or cr.get('image_url') %}
+      <img src="{{ cr.get('thumbnail_url') or cr.get('image_url') }}" alt="Creative preview" style="max-width:100%;max-height:180px;border-radius:6px;object-fit:contain;">
+      {% elif cr.get('title') %}
+      <div style="text-align:center;">
+        <div style="font-size:16px;font-weight:700;color:var(--text);padding:0 10px;">{{ cr.get('title', '')[:60] }}</div>
+        {% if cr.get('description') %}
+        <div style="font-size:14px;color:var(--muted);margin-top:6px;padding:0 10px;">{{ cr.get('description', '')[:80] }}</div>
+        {% endif %}
+      </div>
+      {% else %}
+      <div style="text-align:center;color:var(--muted);">
+        <div style="font-size:32px;opacity:0.3;">&#127912;</div>
+        <div style="font-size:14px;">Creative #{{ cr.get('id', loop.index) }}</div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Metrics -->
+    <div style="padding:14px;">
+      <div style="font-size:16px;font-weight:600;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+        {{ cr.get('campaign_name', 'Unknown')[:35] }}
+      </div>
+      {% if cr.get('type') or cr.get('creative_type') %}
+      <span class="badge badge-info" style="margin-bottom:8px;">{{ cr.get('type') or cr.get('creative_type', 'Unknown') }}</span>
+      {% endif %}
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
+        <div>
+          <div style="font-size:14px;color:var(--muted);text-transform:uppercase;">Impressions</div>
+          <div style="font-size:16px;font-weight:700;">{{ '{:,}'.format(cr.get('impressions', 0) or 0) }}</div>
+        </div>
+        <div>
+          <div style="font-size:14px;color:var(--muted);text-transform:uppercase;">Clicks</div>
+          <div style="font-size:16px;font-weight:700;">{{ '{:,}'.format(cr.get('clicks', 0) or 0) }}</div>
+        </div>
+        <div>
+          <div style="font-size:14px;color:var(--muted);text-transform:uppercase;">CTR</div>
+          <div style="font-size:16px;font-weight:700;color:{% if (cr.get('ctr', 0) or 0) >= 0.56 %}var(--success){% elif (cr.get('ctr', 0) or 0) < 0.3 %}var(--danger){% else %}var(--text){% endif %}">
+            {{ '{:.2f}'.format(cr.get('ctr', 0) or 0) }}%
+          </div>
+        </div>
+        <div>
+          <div style="font-size:14px;color:var(--muted);text-transform:uppercase;">Engagements</div>
+          <div style="font-size:16px;font-weight:700;">{{ '{:,}'.format(cr.get('totalEngagements', 0) or cr.get('engagements', 0) or 0) }}</div>
+        </div>
+      </div>
+
+      {% if cr.get('likes') is not none or cr.get('shares') is not none %}
+      <div style="display:flex;gap:12px;margin-top:8px;font-size:14px;color:var(--muted);">
+        {% if cr.get('likes') is not none %}<span>&#128077; {{ cr.get('likes', 0) }}</span>{% endif %}
+        {% if cr.get('comments') is not none %}<span>&#128172; {{ cr.get('comments', 0) }}</span>{% endif %}
+        {% if cr.get('shares') is not none %}<span>&#128257; {{ cr.get('shares', 0) }}</span>{% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<script>
+function sortCreatives() {
+  var sortBy = document.getElementById('sortCreatives').value;
+  var grid = document.getElementById('creativeGrid');
+  var cards = Array.from(grid.querySelectorAll('.creative-card'));
+  var attrMap = {impressions: 'imp', clicks: 'clicks', ctr: 'ctr', engagement: 'eng'};
+  cards.sort(function(a, b) {
+    return parseFloat(b.dataset[attrMap[sortBy]] || 0) - parseFloat(a.dataset[attrMap[sortBy]] || 0);
+  });
+  cards.forEach(function(c) { grid.appendChild(c); });
+}
+
+document.getElementById('creativeSearch')?.addEventListener('input', function() {
+  var q = this.value.toLowerCase();
+  document.querySelectorAll('.creative-card').forEach(function(card) {
+    card.style.display = card.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+});
+</script>
+
+{% else %}
+<div class="empty-state">
+  <div class="icon">&#127912;</div>
+  <p>No creative data available for this report.</p>
+  <p style="font-size:14px;color:var(--muted);">Creative data is fetched from the LinkedIn API when available.</p>
+  <a href="{{ url_for('view_report', report_name=report_name) }}" class="btn btn-outline">Back to Report</a>
+</div>
+{% endif %}
+{% endblock %}

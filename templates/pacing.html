@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% set report_name = report_name %}
+{% block title %}Budget Pacing - {{ report_name }}{% endblock %}
+{% block page_title %}Budget Pacing{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('dashboard') }}">Dashboard</a> / <a href="{{ url_for('view_report', report_name=report_name) }}">{{ report_name[:20] }}</a> / Pacing{% endblock %}
+
+{% block content %}
+<div class="alert alert-info">
+  <span>&#9201;</span>
+  <span>Track daily spend rate against your budget to ensure campaigns pace properly through the period.</span>
+</div>
+
+<!-- Period Settings -->
+<div class="card">
+  <h3 style="margin-bottom:12px;">Pacing Configuration</h3>
+  <div class="form-row">
+    <div class="form-group">
+      <label>Budget Period (days)</label>
+      <input type="number" id="periodDays" value="30" min="1" max="365" onchange="recalcPacing()">
+    </div>
+    <div class="form-group">
+      <label>Days Elapsed</label>
+      <input type="number" id="daysElapsed" value="15" min="0" max="365" onchange="recalcPacing()">
+    </div>
+    <div class="form-group">
+      <label>Total Period Budget ($)</label>
+      <input type="number" id="totalBudget" value="{{ '{:.0f}'.format(agg.total_spend * 2) }}" min="0" step="100" onchange="recalcPacing()">
+    </div>
+  </div>
+</div>
+
+<!-- Pacing Summary -->
+<div class="kpi-grid" id="pacingKpis"></div>
+
+<!-- Pacing Gauge -->
+<div class="grid-2">
+  <div class="card" style="text-align:center;">
+    <h3 style="margin-bottom:16px;">Overall Pacing</h3>
+    <canvas id="pacingGauge" height="200"></canvas>
+    <div id="pacingLabel" style="font-size:16px;font-weight:700;margin-top:12px;"></div>
+  </div>
+  <div class="card">
+    <h3 style="margin-bottom:16px;">Projected Spend</h3>
+    <canvas id="projectionChart" height="200"></canvas>
+  </div>
+</div>
+
+<!-- Per-Campaign Pacing -->
+<div class="card">
+  <div class="card-header">
+    <h3>Campaign Pacing</h3>
+  </div>
+  <div id="campPacing"></div>
+</div>
+
+<script>
+var campaigns = {{ campaigns|tojson }};
+var totalActualSpend = {{ agg.total_spend }};
+var gaugeChart = null, projChart = null;
+
+function recalcPacing() {
+  var period = parseInt(document.getElementById('periodDays').value) || 30;
+  var elapsed = parseInt(document.getElementById('daysElapsed').value) || 1;
+  var budget = parseFloat(document.getElementById('totalBudget').value) || 1;
+  var remaining = period - elapsed;
+
+  var expectedSpend = (budget / period) * elapsed;
+  var dailyRate = elapsed > 0 ? (totalActualSpend / elapsed) : 0;
+  var projectedTotal = dailyRate * period;
+  var pacingPct = expectedSpend > 0 ? (totalActualSpend / expectedSpend * 100) : 0;
+  var budgetUsed = (totalActualSpend / budget * 100);
+  var budgetRemaining = budget - totalActualSpend;
+  var dailyBudgetRemaining = remaining > 0 ? (budgetRemaining / remaining) : 0;
+
+  var pacingStatus, pacingColor;
+  if (pacingPct >= 90 && pacingPct <= 110) { pacingStatus = 'On Track'; pacingColor = 'var(--success)'; }
+  else if (pacingPct < 90) { pacingStatus = 'Under-pacing'; pacingColor = 'var(--warning)'; }
+  else { pacingStatus = 'Over-pacing'; pacingColor = 'var(--danger)'; }
+
+  // KPIs
+  document.getElementById('pacingKpis').innerHTML =
+    '<div class="kpi-card"><div class="kpi-label">Daily Spend Rate</div><div class="kpi-value">$' + dailyRate.toFixed(2) + '</div><div class="kpi-sub">per day</div></div>' +
+    '<div class="kpi-card"><div class="kpi-label">Budget Used</div><div class="kpi-value">' + budgetUsed.toFixed(1) + '%</div><div class="kpi-sub">$' + totalActualSpend.toLocaleString(undefined,{maximumFractionDigits:0}) + ' / $' + budget.toLocaleString(undefined,{maximumFractionDigits:0}) + '</div></div>' +
+    '<div class="kpi-card"><div class="kpi-label">Pacing</div><div class="kpi-value" style="color:' + pacingColor + ';">' + pacingPct.toFixed(0) + '%</div><div class="kpi-sub">' + pacingStatus + '</div></div>' +
+    '<div class="kpi-card"><div class="kpi-label">Projected Total</div><div class="kpi-value" style="color:' + (projectedTotal <= budget * 1.1 ? 'var(--success)' : 'var(--danger)') + ';">$' + projectedTotal.toLocaleString(undefined,{maximumFractionDigits:0}) + '</div><div class="kpi-sub">at current rate</div></div>' +
+    '<div class="kpi-card"><div class="kpi-label">Budget Remaining</div><div class="kpi-value">$' + Math.max(0, budgetRemaining).toLocaleString(undefined,{maximumFractionDigits:0}) + '</div><div class="kpi-sub">' + remaining + ' days left</div></div>' +
+    '<div class="kpi-card"><div class="kpi-label">Recommended Daily</div><div class="kpi-value">$' + dailyBudgetRemaining.toFixed(2) + '</div><div class="kpi-sub">to stay on budget</div></div>';
+
+  // Gauge chart
+  if (gaugeChart) gaugeChart.destroy();
+  gaugeChart = new Chart(document.getElementById('pacingGauge'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Spent', 'Remaining'],
+      datasets: [{ data: [Math.min(budgetUsed, 100), Math.max(0, 100 - budgetUsed)], backgroundColor: [pacingColor, 'var(--border)'], borderWidth: 0 }]
+    },
+    options: { responsive: true, cutout: '70%', plugins: { legend: { display: false } } }
+  });
+  document.getElementById('pacingLabel').innerHTML = '<span style="color:' + pacingColor + ';">' + pacingStatus + '</span> &mdash; ' + budgetUsed.toFixed(1) + '% used';
+
+  // Projection chart
+  if (projChart) projChart.destroy();
+  var dayLabels = [];
+  var idealLine = [], actualLine = [], projLine = [];
+  for (var d = 0; d <= period; d++) {
+    dayLabels.push('Day ' + d);
+    idealLine.push((budget / period) * d);
+    if (d <= elapsed) {
+      actualLine.push((totalActualSpend / elapsed) * d);
+      projLine.push(null);
+    } else {
+      actualLine.push(null);
+      projLine.push(dailyRate * d);
+    }
+  }
+  projChart = new Chart(document.getElementById('projectionChart'), {
+    type: 'line',
+    data: {
+      labels: dayLabels,
+      datasets: [
+        { label: 'Ideal Pace', data: idealLine, borderColor: 'var(--muted)', borderDash: [5,5], pointRadius: 0, fill: false, borderWidth: 1.5 },
+        { label: 'Actual Spend', data: actualLine, borderColor: '#0A66C2', pointRadius: 0, fill: false, borderWidth: 2 },
+        { label: 'Projected', data: projLine, borderColor: '#F5A623', borderDash: [3,3], pointRadius: 0, fill: false, borderWidth: 2 }
+      ]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 13 } } } }, scales: { y: { beginAtZero: true } } }
+  });
+
+  // Per-campaign pacing
+  var campHtml = '';
+  campaigns.forEach(function(c) {
+    var cSpend = parseFloat(c.cost_usd || 0);
+    var cBudgetShare = totalActualSpend > 0 ? (cSpend / totalActualSpend) : (1 / campaigns.length);
+    var cBudget = budget * cBudgetShare;
+    var cPacing = cBudget > 0 ? (cSpend / ((cBudget / period) * elapsed) * 100) : 0;
+    var cStatus, cColor;
+    if (cPacing >= 90 && cPacing <= 110) { cStatus = 'On Track'; cColor = 'var(--success)'; }
+    else if (cPacing < 90) { cStatus = 'Under'; cColor = 'var(--warning)'; }
+    else { cStatus = 'Over'; cColor = 'var(--danger)'; }
+    var name = (c.display_name || c.name || 'Unknown').substring(0, 35);
+
+    campHtml += '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);">';
+    campHtml += '<div style="flex:1;min-width:0;"><div style="font-size:16px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + name + '</div>';
+    campHtml += '<div style="font-size:14px;color:var(--muted);">$' + cSpend.toFixed(2) + ' / $' + cBudget.toFixed(0) + ' allocated</div></div>';
+    campHtml += '<div style="width:120px;"><div class="progress" style="height:8px;"><div class="progress-bar" style="width:' + Math.min(cPacing, 100) + '%;background:' + cColor + ';"></div></div></div>';
+    campHtml += '<span style="min-width:60px;text-align:right;font-size:15px;font-weight:600;color:' + cColor + ';">' + cPacing.toFixed(0) + '% ' + cStatus + '</span>';
+    campHtml += '</div>';
+  });
+  document.getElementById('campPacing').innerHTML = campHtml;
+}
+
+recalcPacing();
+</script>
+{% endblock %}
