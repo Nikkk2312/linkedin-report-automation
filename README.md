@@ -16,6 +16,14 @@
   <a href="https://ollama.com/"><img src="https://img.shields.io/badge/AI-Ollama%20%7C%20Claude%20%7C%20OpenAI-blueviolet" alt="AI Insights"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green" alt="License MIT"></a>
   <img src="https://img.shields.io/badge/version-2.0.0-blue" alt="Version 2.0.0">
+  <a href="https://linkedin-report-automation.onrender.com"><img src="https://img.shields.io/badge/live%20demo-online-brightgreen" alt="Live Demo"></a>
+</p>
+
+<p align="center">
+  <strong>▶ <a href="https://linkedin-report-automation.onrender.com">Try the live demo</a></strong> — loads instantly with a sample report (15 campaigns, 90+ metrics). No login, no setup.<br/>
+  <a href="https://codespaces.new/Nikkk2312/linkedin-report-automation">Open in Codespaces</a> &bull;
+  <a href="https://render.com/deploy?repo=https://github.com/Nikkk2312/linkedin-report-automation">Deploy your own</a> &bull;
+  <code>docker compose up</code>
 </p>
 
 <p align="center">
