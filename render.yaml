@@ -1,13 +1,14 @@
+# One-click permanent hosting on Render (free tier).
+# The dashboard auto-seeds a bundled sample report, so it works with NO secrets.
+# To generate reports from your own LinkedIn data, add LINKEDIN_ACCESS_TOKEN and
+# LINKEDIN_ACCOUNT_ID in the Render dashboard (Environment) after deploy.
 services:
   - type: web
     name: linkedin-report-automation
     runtime: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: python app.py
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python app.py"
     envVars:
       - key: PYTHON_VERSION
         value: "3.11"
-      - key: LINKEDIN_ACCESS_TOKEN
-        sync: false
-      - key: LINKEDIN_ACCOUNT_ID
-        sync: false

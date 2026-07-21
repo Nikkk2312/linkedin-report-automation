@@ -1,0 +1,845 @@
+{
+ "report_date": "23-05-2026",
+ "google_sheet_url": "",
+ "campaigns": [
+  {
+   "id": "demo-001",
+   "name": "Enterprise SaaS - Brand Awareness",
+   "display_name": "Enterprise SaaS - Brand Awareness",
+   "campaign_type": "Engagement",
+   "status": "ACTIVE",
+   "start_date": "2025-08-06",
+   "geo_urns": [
+    "urn:li:geo:102713980"
+   ],
+   "geo_display": "India",
+   "impressions": 113407,
+   "clicks": 1763,
+   "engagements": 1809,
+   "dwell_time": "N/A",
+   "creatives": [
+    {
+     "id": "demo-001-cr1",
+     "name": "Enterprise SaaS - Brand Awareness - Creative 1",
+     "impressions": 57125,
+     "clicks": 881,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+1"
+    },
+    {
+     "id": "demo-001-cr2",
+     "name": "Enterprise SaaS - Brand Awareness - Creative 2",
+     "impressions": 16533,
+     "clicks": 268,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+2"
+    },
+    {
+     "id": "demo-001-cr3",
+     "name": "Enterprise SaaS - Brand Awareness - Creative 3",
+     "impressions": 14084,
+     "clicks": 222,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+3"
+    },
+    {
+     "id": "demo-001-cr4",
+     "name": "Enterprise SaaS - Brand Awareness - Creative 4",
+     "impressions": 12469,
+     "clicks": 180,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+4"
+    },
+    {
+     "id": "demo-001-cr5",
+     "name": "Enterprise SaaS - Brand Awareness - Creative 5",
+     "impressions": 9617,
+     "clicks": 149,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+5"
+    },
+    {
+     "id": "demo-001-cr6",
+     "name": "Enterprise SaaS - Brand Awareness - Creative 6",
+     "impressions": 3579,
+     "clicks": 63,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+6"
+    }
+   ]
+  },
+  {
+   "id": "demo-002",
+   "name": "FinTech Solutions - Engagement",
+   "display_name": "FinTech Solutions - Engagement",
+   "campaign_type": "Brand Awareness",
+   "status": "ACTIVE",
+   "start_date": "2025-12-01",
+   "geo_urns": [
+    "urn:li:geo:102713980"
+   ],
+   "geo_display": "India",
+   "impressions": 220239,
+   "clicks": 660,
+   "engagements": 679,
+   "dwell_time": "N/A",
+   "creatives": [
+    {
+     "id": "demo-002-cr1",
+     "name": "FinTech Solutions - Engagement - Creative 1",
+     "impressions": 73962,
+     "clicks": 230,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+1"
+    },
+    {
+     "id": "demo-002-cr2",
+     "name": "FinTech Solutions - Engagement - Creative 2",
+     "impressions": 59025,
+     "clicks": 178,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+2"
+    },
+    {
+     "id": "demo-002-cr3",
+     "name": "FinTech Solutions - Engagement - Creative 3",
+     "impressions": 56616,
+     "clicks": 158,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+3"
+    },
+    {
+     "id": "demo-002-cr4",
+     "name": "FinTech Solutions - Engagement - Creative 4",
+     "impressions": 30636,
+     "clicks": 94,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+4"
+    }
+   ]
+  },
+  {
+   "id": "demo-003",
+   "name": "Cloud Migration - Lead Gen",
+   "display_name": "Cloud Migration - Lead Gen",
+   "campaign_type": "Brand Awareness",
+   "status": "ACTIVE",
+   "start_date": "2025-11-28",
+   "geo_urns": [
+    "urn:li:geo:102713980"
+   ],
+   "geo_display": "India",
+   "impressions": 320606,
+   "clicks": 905,
+   "engagements": 942,
+   "dwell_time": "N/A",
+   "creatives": [
+    {
+     "id": "demo-003-cr1",
+     "name": "Cloud Migration - Lead Gen - Creative 1",
+     "impressions": 85008,
+     "clicks": 245,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+1"
+    },
+    {
+     "id": "demo-003-cr2",
+     "name": "Cloud Migration - Lead Gen - Creative 2",
+     "impressions": 52770,
+     "clicks": 126,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+2"
+    },
+    {
+     "id": "demo-003-cr3",
+     "name": "Cloud Migration - Lead Gen - Creative 3",
+     "impressions": 51443,
+     "clicks": 146,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+3"
+    },
+    {
+     "id": "demo-003-cr4",
+     "name": "Cloud Migration - Lead Gen - Creative 4",
+     "impressions": 49856,
+     "clicks": 137,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+4"
+    },
+    {
+     "id": "demo-003-cr5",
+     "name": "Cloud Migration - Lead Gen - Creative 5",
+     "impressions": 41545,
+     "clicks": 135,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+5"
+    },
+    {
+     "id": "demo-003-cr6",
+     "name": "Cloud Migration - Lead Gen - Creative 6",
+     "impressions": 39984,
+     "clicks": 116,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+6"
+    }
+   ]
+  },
+  {
+   "id": "demo-004",
+   "name": "Cybersecurity - Thought Leadership",
+   "display_name": "Cybersecurity - Thought Leadership",
+   "campaign_type": "Engagement",
+   "status": "ACTIVE",
+   "start_date": "2025-12-08",
+   "geo_urns": [
+    "urn:li:geo:103644278"
+   ],
+   "geo_display": "US",
+   "impressions": 17556,
+   "clicks": 194,
+   "engagements": 200,
+   "dwell_time": "N/A",
+   "creatives": [
+    {
+     "id": "demo-004-cr1",
+     "name": "Cybersecurity - Thought Leadership - Creative 1",
+     "impressions": 4418,
+     "clicks": 47,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+1"
+    },
+    {
+     "id": "demo-004-cr2",
+     "name": "Cybersecurity - Thought Leadership - Creative 2",
+     "impressions": 3595,
+     "clicks": 42,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+2"
+    },
+    {
+     "id": "demo-004-cr3",
+     "name": "Cybersecurity - Thought Leadership - Creative 3",
+     "impressions": 2861,
+     "clicks": 21,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+3"
+    },
+    {
+     "id": "demo-004-cr4",
+     "name": "Cybersecurity - Thought Leadership - Creative 4",
+     "impressions": 2545,
+     "clicks": 41,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+4"
+    },
+    {
+     "id": "demo-004-cr5",
+     "name": "Cybersecurity - Thought Leadership - Creative 5",
+     "impressions": 2488,
+     "clicks": 25,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+5"
+    },
+    {
+     "id": "demo-004-cr6",
+     "name": "Cybersecurity - Thought Leadership - Creative 6",
+     "impressions": 993,
+     "clicks": 9,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+6"
+    },
+    {
+     "id": "demo-004-cr7",
+     "name": "Cybersecurity - Thought Leadership - Creative 7",
+     "impressions": 218,
+     "clicks": 0,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+7"
+    },
+    {
+     "id": "demo-004-cr8",
+     "name": "Cybersecurity - Thought Leadership - Creative 8",
+     "impressions": 156,
+     "clicks": 3,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+8"
+    },
+    {
+     "id": "demo-004-cr9",
+     "name": "Cybersecurity - Thought Leadership - Creative 9",
+     "impressions": 147,
+     "clicks": 4,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+9"
+    },
+    {
+     "id": "demo-004-cr10",
+     "name": "Cybersecurity - Thought Leadership - Creative 10",
+     "impressions": 135,
+     "clicks": 2,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+10"
+    }
+   ]
+  },
+  {
+   "id": "demo-005",
+   "name": "HR Tech - Follower Growth",
+   "display_name": "HR Tech - Follower Growth",
+   "campaign_type": "Engagement",
+   "status": "ACTIVE",
+   "start_date": "2026-02-26",
+   "geo_urns": [
+    "urn:li:geo:102713980"
+   ],
+   "geo_display": "India",
+   "impressions": 164629,
+   "clicks": 8100,
+   "engagements": 8262,
+   "dwell_time": "N/A",
+   "creatives": [
+    {
+     "id": "demo-005-cr1",
+     "name": "HR Tech - Follower Growth - Creative 1",
+     "impressions": 81804,
+     "clicks": 3681,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+1"
+    },
+    {
+     "id": "demo-005-cr2",
+     "name": "HR Tech - Follower Growth - Creative 2",
+     "impressions": 46463,
+     "clicks": 2393,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+2"
+    },
+    {
+     "id": "demo-005-cr3",
+     "name": "HR Tech - Follower Growth - Creative 3",
+     "impressions": 24305,
+     "clicks": 1463,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+3"
+    },
+    {
+     "id": "demo-005-cr4",
+     "name": "HR Tech - Follower Growth - Creative 4",
+     "impressions": 12057,
+     "clicks": 563,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+4"
+    }
+   ]
+  },
+  {
+   "id": "demo-006",
+   "name": "Data & Analytics - Engagement",
+   "display_name": "Data & Analytics - Engagement",
+   "campaign_type": "Engagement",
+   "status": "ACTIVE",
+   "start_date": "2026-04-02",
+   "geo_urns": [
+    "urn:li:geo:102713980"
+   ],
+   "geo_display": "India",
+   "impressions": 43314,
+   "clicks": 748,
+   "engagements": 790,
+   "dwell_time": "N/A",
+   "creatives": [
+    {
+     "id": "demo-006-cr1",
+     "name": "Data & Analytics - Engagement - Creative 1",
+     "impressions": 7971,
+     "clicks": 161,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+1"
+    },
+    {
+     "id": "demo-006-cr2",
+     "name": "Data & Analytics - Engagement - Creative 2",
+     "impressions": 7539,
+     "clicks": 136,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+2"
+    },
+    {
+     "id": "demo-006-cr3",
+     "name": "Data & Analytics - Engagement - Creative 3",
+     "impressions": 7216,
+     "clicks": 113,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+3"
+    },
+    {
+     "id": "demo-006-cr4",
+     "name": "Data & Analytics - Engagement - Creative 4",
+     "impressions": 6507,
+     "clicks": 104,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+4"
+    },
+    {
+     "id": "demo-006-cr5",
+     "name": "Data & Analytics - Engagement - Creative 5",
+     "impressions": 6178,
+     "clicks": 110,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+5"
+    },
+    {
+     "id": "demo-006-cr6",
+     "name": "Data & Analytics - Engagement - Creative 6",
+     "impressions": 3966,
+     "clicks": 59,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+6"
+    },
+    {
+     "id": "demo-006-cr7",
+     "name": "Data & Analytics - Engagement - Creative 7",
+     "impressions": 2402,
+     "clicks": 39,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+7"
+    },
+    {
+     "id": "demo-006-cr8",
+     "name": "Data & Analytics - Engagement - Creative 8",
+     "impressions": 1535,
+     "clicks": 26,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+8"
+    }
+   ]
+  },
+  {
+   "id": "demo-007",
+   "name": "DevOps Platform - Awareness",
+   "display_name": "DevOps Platform - Awareness",
+   "campaign_type": "Engagement",
+   "status": "ACTIVE",
+   "start_date": "2026-04-08",
+   "geo_urns": [
+    "urn:li:geo:103644278"
+   ],
+   "geo_display": "US",
+   "impressions": 314,
+   "clicks": 12,
+   "engagements": 14,
+   "dwell_time": "N/A",
+   "creatives": [
+    {
+     "id": "demo-007-cr1",
+     "name": "DevOps Platform - Awareness - Creative 1",
+     "impressions": 81,
+     "clicks": 2,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+1"
+    },
+    {
+     "id": "demo-007-cr2",
+     "name": "DevOps Platform - Awareness - Creative 2",
+     "impressions": 78,
+     "clicks": 6,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+2"
+    },
+    {
+     "id": "demo-007-cr3",
+     "name": "DevOps Platform - Awareness - Creative 3",
+     "impressions": 73,
+     "clicks": 1,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+3"
+    },
+    {
+     "id": "demo-007-cr4",
+     "name": "DevOps Platform - Awareness - Creative 4",
+     "impressions": 56,
+     "clicks": 2,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+4"
+    },
+    {
+     "id": "demo-007-cr5",
+     "name": "DevOps Platform - Awareness - Creative 5",
+     "impressions": 26,
+     "clicks": 1,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+5"
+    }
+   ]
+  },
+  {
+   "id": "demo-008",
+   "name": "AI Platform - Engagement",
+   "display_name": "AI Platform - Engagement",
+   "campaign_type": "Engagement",
+   "status": "ACTIVE",
+   "start_date": "2026-05-08",
+   "geo_urns": [
+    "urn:li:geo:103644278"
+   ],
+   "geo_display": "US",
+   "impressions": 1948,
+   "clicks": 8,
+   "engagements": 9,
+   "dwell_time": "N/A",
+   "creatives": [
+    {
+     "id": "demo-008-cr1",
+     "name": "AI Platform - Engagement - Creative 1",
+     "impressions": 604,
+     "clicks": 4,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+1"
+    },
+    {
+     "id": "demo-008-cr2",
+     "name": "AI Platform - Engagement - Creative 2",
+     "impressions": 497,
+     "clicks": 1,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+2"
+    },
+    {
+     "id": "demo-008-cr3",
+     "name": "AI Platform - Engagement - Creative 3",
+     "impressions": 370,
+     "clicks": 1,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+3"
+    },
+    {
+     "id": "demo-008-cr4",
+     "name": "AI Platform - Engagement - Creative 4",
+     "impressions": 334,
+     "clicks": 2,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+4"
+    },
+    {
+     "id": "demo-008-cr5",
+     "name": "AI Platform - Engagement - Creative 5",
+     "impressions": 143,
+     "clicks": 0,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+5"
+    }
+   ]
+  },
+  {
+   "id": "demo-009",
+   "name": "Healthcare IT - ABM",
+   "display_name": "Healthcare IT - ABM",
+   "campaign_type": "Engagement",
+   "status": "ACTIVE",
+   "start_date": "2026-05-13",
+   "geo_urns": [
+    "urn:li:geo:103644278"
+   ],
+   "geo_display": "US",
+   "impressions": 1382,
+   "clicks": 7,
+   "engagements": 7,
+   "dwell_time": "N/A",
+   "creatives": [
+    {
+     "id": "demo-009-cr1",
+     "name": "Healthcare IT - ABM - Creative 1",
+     "impressions": 728,
+     "clicks": 5,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+1"
+    },
+    {
+     "id": "demo-009-cr2",
+     "name": "Healthcare IT - ABM - Creative 2",
+     "impressions": 354,
+     "clicks": 0,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+2"
+    },
+    {
+     "id": "demo-009-cr3",
+     "name": "Healthcare IT - ABM - Creative 3",
+     "impressions": 178,
+     "clicks": 1,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+3"
+    },
+    {
+     "id": "demo-009-cr4",
+     "name": "Healthcare IT - ABM - Creative 4",
+     "impressions": 97,
+     "clicks": 1,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+4"
+    },
+    {
+     "id": "demo-009-cr5",
+     "name": "Healthcare IT - ABM - Creative 5",
+     "impressions": 25,
+     "clicks": 0,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+5"
+    }
+   ]
+  },
+  {
+   "id": "demo-010",
+   "name": "Retail Tech - Engagement",
+   "display_name": "Retail Tech - Engagement",
+   "campaign_type": "Engagement",
+   "status": "ACTIVE",
+   "start_date": "2026-05-14",
+   "geo_urns": [
+    "urn:li:geo:102713980"
+   ],
+   "geo_display": "India",
+   "impressions": 8351,
+   "clicks": 182,
+   "engagements": 188,
+   "dwell_time": "N/A",
+   "creatives": [
+    {
+     "id": "demo-010-cr1",
+     "name": "Retail Tech - Engagement - Creative 1",
+     "impressions": 2595,
+     "clicks": 49,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+1"
+    },
+    {
+     "id": "demo-010-cr2",
+     "name": "Retail Tech - Engagement - Creative 2",
+     "impressions": 2529,
+     "clicks": 51,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+2"
+    },
+    {
+     "id": "demo-010-cr3",
+     "name": "Retail Tech - Engagement - Creative 3",
+     "impressions": 2245,
+     "clicks": 49,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+3"
+    },
+    {
+     "id": "demo-010-cr4",
+     "name": "Retail Tech - Engagement - Creative 4",
+     "impressions": 821,
+     "clicks": 25,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+4"
+    },
+    {
+     "id": "demo-010-cr5",
+     "name": "Retail Tech - Engagement - Creative 5",
+     "impressions": 161,
+     "clicks": 8,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+5"
+    }
+   ]
+  },
+  {
+   "id": "demo-011",
+   "name": "Manufacturing IoT - Awareness",
+   "display_name": "Manufacturing IoT - Awareness",
+   "campaign_type": "Engagement",
+   "status": "ACTIVE",
+   "start_date": "2026-05-14",
+   "geo_urns": [
+    "urn:li:geo:102713980"
+   ],
+   "geo_display": "India",
+   "impressions": 8244,
+   "clicks": 150,
+   "engagements": 155,
+   "dwell_time": "N/A",
+   "creatives": [
+    {
+     "id": "demo-011-cr1",
+     "name": "Manufacturing IoT - Awareness - Creative 1",
+     "impressions": 3021,
+     "clicks": 52,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+1"
+    },
+    {
+     "id": "demo-011-cr2",
+     "name": "Manufacturing IoT - Awareness - Creative 2",
+     "impressions": 2600,
+     "clicks": 43,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+2"
+    },
+    {
+     "id": "demo-011-cr3",
+     "name": "Manufacturing IoT - Awareness - Creative 3",
+     "impressions": 2238,
+     "clicks": 35,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+3"
+    },
+    {
+     "id": "demo-011-cr4",
+     "name": "Manufacturing IoT - Awareness - Creative 4",
+     "impressions": 274,
+     "clicks": 9,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+4"
+    },
+    {
+     "id": "demo-011-cr5",
+     "name": "Manufacturing IoT - Awareness - Creative 5",
+     "impressions": 111,
+     "clicks": 11,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+5"
+    }
+   ]
+  },
+  {
+   "id": "demo-012",
+   "name": "EdTech Suite - Engagement",
+   "display_name": "EdTech Suite - Engagement",
+   "campaign_type": "Engagement",
+   "status": "ACTIVE",
+   "start_date": "2026-05-14",
+   "geo_urns": [
+    "urn:li:geo:102713980"
+   ],
+   "geo_display": "India",
+   "impressions": 6894,
+   "clicks": 116,
+   "engagements": 117,
+   "dwell_time": "N/A",
+   "creatives": [
+    {
+     "id": "demo-012-cr1",
+     "name": "EdTech Suite - Engagement - Creative 1",
+     "impressions": 1835,
+     "clicks": 41,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+1"
+    },
+    {
+     "id": "demo-012-cr2",
+     "name": "EdTech Suite - Engagement - Creative 2",
+     "impressions": 1544,
+     "clicks": 26,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+2"
+    },
+    {
+     "id": "demo-012-cr3",
+     "name": "EdTech Suite - Engagement - Creative 3",
+     "impressions": 1289,
+     "clicks": 20,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+3"
+    },
+    {
+     "id": "demo-012-cr4",
+     "name": "EdTech Suite - Engagement - Creative 4",
+     "impressions": 864,
+     "clicks": 12,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+4"
+    },
+    {
+     "id": "demo-012-cr5",
+     "name": "EdTech Suite - Engagement - Creative 5",
+     "impressions": 771,
+     "clicks": 9,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+5"
+    },
+    {
+     "id": "demo-012-cr6",
+     "name": "EdTech Suite - Engagement - Creative 6",
+     "impressions": 591,
+     "clicks": 8,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+6"
+    }
+   ]
+  },
+  {
+   "id": "demo-013",
+   "name": "Supply Chain - Lead Gen",
+   "display_name": "Supply Chain - Lead Gen",
+   "campaign_type": "Engagement",
+   "status": "ACTIVE",
+   "start_date": "2026-05-14",
+   "geo_urns": [
+    "urn:li:geo:102713980"
+   ],
+   "geo_display": "India",
+   "impressions": 7938,
+   "clicks": 181,
+   "engagements": 184,
+   "dwell_time": "N/A",
+   "creatives": [
+    {
+     "id": "demo-013-cr1",
+     "name": "Supply Chain - Lead Gen - Creative 1",
+     "impressions": 5996,
+     "clicks": 117,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+1"
+    },
+    {
+     "id": "demo-013-cr2",
+     "name": "Supply Chain - Lead Gen - Creative 2",
+     "impressions": 746,
+     "clicks": 17,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+2"
+    },
+    {
+     "id": "demo-013-cr3",
+     "name": "Supply Chain - Lead Gen - Creative 3",
+     "impressions": 530,
+     "clicks": 17,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+3"
+    },
+    {
+     "id": "demo-013-cr4",
+     "name": "Supply Chain - Lead Gen - Creative 4",
+     "impressions": 288,
+     "clicks": 9,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+4"
+    },
+    {
+     "id": "demo-013-cr5",
+     "name": "Supply Chain - Lead Gen - Creative 5",
+     "impressions": 275,
+     "clicks": 13,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+5"
+    },
+    {
+     "id": "demo-013-cr6",
+     "name": "Supply Chain - Lead Gen - Creative 6",
+     "impressions": 103,
+     "clicks": 8,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+6"
+    }
+   ]
+  },
+  {
+   "id": "demo-014",
+   "name": "MarTech Cloud - Engagement",
+   "display_name": "MarTech Cloud - Engagement",
+   "campaign_type": "Engagement",
+   "status": "ACTIVE",
+   "start_date": "2026-05-19",
+   "geo_urns": [
+    "urn:li:geo:101174742",
+    "urn:li:geo:103644278"
+   ],
+   "geo_display": "US, Canada",
+   "impressions": 745,
+   "clicks": 2,
+   "engagements": 2,
+   "dwell_time": "N/A",
+   "creatives": [
+    {
+     "id": "demo-014-cr1",
+     "name": "MarTech Cloud - Engagement - Creative 1",
+     "impressions": 489,
+     "clicks": 1,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+1"
+    },
+    {
+     "id": "demo-014-cr2",
+     "name": "MarTech Cloud - Engagement - Creative 2",
+     "impressions": 141,
+     "clicks": 0,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+2"
+    },
+    {
+     "id": "demo-014-cr3",
+     "name": "MarTech Cloud - Engagement - Creative 3",
+     "impressions": 115,
+     "clicks": 1,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+3"
+    }
+   ]
+  },
+  {
+   "id": "demo-015",
+   "name": "Sustainability - Brand Awareness",
+   "display_name": "Sustainability - Brand Awareness",
+   "campaign_type": "Engagement",
+   "status": "ACTIVE",
+   "start_date": "2026-05-19",
+   "geo_urns": [
+    "urn:li:geo:103644278"
+   ],
+   "geo_display": "US",
+   "impressions": 10023,
+   "clicks": 124,
+   "engagements": 124,
+   "dwell_time": "N/A",
+   "creatives": [
+    {
+     "id": "demo-015-cr1",
+     "name": "Sustainability - Brand Awareness - Creative 1",
+     "impressions": 5329,
+     "clicks": 93,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+1"
+    },
+    {
+     "id": "demo-015-cr2",
+     "name": "Sustainability - Brand Awareness - Creative 2",
+     "impressions": 2762,
+     "clicks": 15,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+2"
+    },
+    {
+     "id": "demo-015-cr3",
+     "name": "Sustainability - Brand Awareness - Creative 3",
+     "impressions": 1932,
+     "clicks": 16,
+     "image_url": "https://placehold.co/1200x627/1a2236/6ea8fe?text=Ad+Creative+3"
+    }
+   ]
+  }
+ ],
+ "account_name": "Acme Corp (Demo)"
+}

@@ -26,7 +26,30 @@ from flask import (
 BASE_DIR = Path(__file__).resolve().parent
 OUTPUT_DIR = BASE_DIR / 'output'
 ASSETS_DIR = BASE_DIR / 'assets'
+SAMPLES_DIR = BASE_DIR / 'samples'
 ENV_PATH = BASE_DIR / '.env'
+
+
+def _ensure_demo_data():
+    """Seed a bundled sample report so a fresh/hosted deploy is never blank.
+
+    Runs when the output directory has no report JSON yet (e.g. a new clone or
+    a cloud deploy with no LinkedIn token). Generating real reports still works
+    normally once a LINKEDIN_ACCESS_TOKEN is provided.
+    """
+    import shutil
+    try:
+        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        has_report = any(f.suffix == '.json' for f in OUTPUT_DIR.iterdir() if f.is_file())
+        demo = SAMPLES_DIR / 'demo_report.json'
+        if not has_report and demo.is_file():
+            shutil.copy2(demo, OUTPUT_DIR / 'report_data_demo.json')
+            logging.getLogger(__name__).info('Seeded demo report (empty output dir).')
+    except Exception as exc:  # never block startup on seeding
+        logging.getLogger(__name__).warning('Demo-data seed skipped: %s', exc)
+
+
+_ensure_demo_data()
 
 app = Flask(__name__, template_folder=str(BASE_DIR / 'templates'),
             static_folder=str(BASE_DIR / 'static'))
